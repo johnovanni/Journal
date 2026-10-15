@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsTfm>true</UseWindowsTfm>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Journal.App</RootNamespace>
+    <AssemblyName>Journal</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Journal.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Journal.Core\Journal.Core.csproj" />
+    <ProjectReference Include="..\Journal.Infrastructure\Journal.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Journal.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Journal.App.Tests" />
+  </ItemGroup>
+</Project>

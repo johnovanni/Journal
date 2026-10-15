@@ -1,0 +1,43 @@
+<Window x:Class="Journal.App.Views.UnlockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Journal" Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" Style="{StaticResource AppWindow}">
+    <Border Padding="32,28">
+        <StackPanel>
+            <Image x:Name="Logo" Source="{StaticResource QuillLogo}" Width="56" Height="56" HorizontalAlignment="Left"
+                   AutomationProperties.Name="Journal logo" />
+            <TextBlock Text="Journal is locked" FontFamily="{StaticResource DisplayFont}" FontSize="24" Margin="0,10,0,6" />
+            <TextBlock Text="{Binding Message}" Style="{StaticResource Muted}" />
+
+            <Button Style="{StaticResource PrimaryButton}" Margin="0,20,0,0" Padding="14,9" HorizontalAlignment="Stretch"
+                    Command="{Binding TryHelloCommand}" IsDefault="True"
+                    Visibility="{Binding CanUseHello, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE928;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                    <TextBlock Text="Unlock with Windows Hello" Margin="8,0,0,0" />
+                </StackPanel>
+            </Button>
+
+            <TextBlock Text="{Binding Error}" Style="{StaticResource ErrorText}" Margin="0,12,0,0" />
+
+            <StackPanel Margin="0,12,0,0" Visibility="{Binding ShowRecovery, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="RECOVERY CODE" Style="{StaticResource Label}" />
+                <TextBox x:Name="RecoveryBox" Text="{Binding RecoveryInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"
+                         FontSize="15" CharacterCasing="Upper" AutomationProperties.Name="Recovery code">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding SubmitRecoveryCodeCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+                <TextBlock Text="Five groups of five letters and numbers, e.g. 7K2Q9-..." Style="{StaticResource Muted}" FontSize="12" Margin="0,4,0,0" />
+                <Button Content="Unlock" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding SubmitRecoveryCodeCommand}" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                <Button Style="{StaticResource LinkButton}" Content="Use recovery code" Command="{Binding UseRecoveryCodeCommand}" Margin="0,0,18,0" />
+                <Button Style="{StaticResource LinkButton}" Content="Open another journal or backup…" Command="{Binding OpenOtherCommand}" />
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" Height="3" Margin="0,16,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+    </Border>
+</Window>

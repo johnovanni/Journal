@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <WindowsTfm>net10.0-windows10.0.19041.0</WindowsTfm>
+    <SupportedOSPlatformVersion Condition="'$(UseWindowsTfm)' == 'true'">10.0.19041.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,28 @@
+<!-- The approved quill logo (ISS-006). Journal.ico is rendered from this drawing at 16-256 px. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<DrawingImage x:Key="QuillLogo" po:Freeze="True" xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options">
+  <DrawingImage.Drawing>
+    <DrawingGroup>
+      <!-- tile -->
+      <GeometryDrawing Brush="#E3F1F2" Geometry="M64,8 L192,8 A56,56 0 0 1 248,64 L248,192 A56,56 0 0 1 192,248 L64,248 A56,56 0 0 1 8,192 L8,64 A56,56 0 0 1 64,8 Z">
+        <GeometryDrawing.Pen><Pen Brush="#2E1F6F78" Thickness="4" /></GeometryDrawing.Pen>
+      </GeometryDrawing>
+      <!-- ink line written by the nib -->
+      <GeometryDrawing Geometry="M62,222 C96,208 124,232 160,216 S204,210 214,216">
+        <GeometryDrawing.Pen><Pen Brush="#661F6F78" Thickness="7" StartLineCap="Round" EndLineCap="Round" /></GeometryDrawing.Pen>
+      </GeometryDrawing>
+      <!-- vane: wide upper side, narrow lower side, notches cut into both edges -->
+      <GeometryDrawing Brush="#1F6F78" Geometry="M226,24 C172,28 128,62 106,104 L126,106 L100,122 C92,140 88,158 90,176 C116,170 140,158 158,142 L150,128 L170,134 C198,104 220,66 226,24 Z" />
+      <!-- shaft -->
+      <GeometryDrawing Geometry="M224,28 Q158,92 84,186">
+        <GeometryDrawing.Pen><Pen Brush="#0F3E44" Thickness="6" StartLineCap="Round" EndLineCap="Round" /></GeometryDrawing.Pen>
+      </GeometryDrawing>
+      <!-- nib -->
+      <GeometryDrawing Brush="#0F3E44" Geometry="M90,178 L76,204 L62,222 L84,206 L96,186 Z">
+        <GeometryDrawing.Pen><Pen Brush="#0F3E44" Thickness="3" LineJoin="Round" /></GeometryDrawing.Pen>
+      </GeometryDrawing>
+    </DrawingGroup>
+  </DrawingImage.Drawing>
+</DrawingImage>
+</ResourceDictionary>

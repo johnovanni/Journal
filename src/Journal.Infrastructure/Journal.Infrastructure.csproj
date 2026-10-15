@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <UseWindowsTfm>true</UseWindowsTfm>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>Journal.Infrastructure</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Journal.Core\Journal.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Content\verses.json" LogicalName="Journal.Content.verses.json" />
+    <EmbeddedResource Include="Content\quotes.json" LogicalName="Journal.Content.quotes.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Journal.Infrastructure.Tests" />
+  </ItemGroup>
+</Project>
