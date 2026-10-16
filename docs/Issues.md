@@ -24,15 +24,15 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 
 | ID | Title | Type | Severity | Requirements | Tests | Status |
 |---|---|---|---|---|---|---|
-| ISS-001 | Some daily verses start or end mid-sentence | Bug | Medium | FR-INSP-01, FR-INSP-03 | TC-INSP-01, TC-INSP-02 (gap) → TC-INSP-13 | Verified |
-| ISS-002 | Verse and quote can't be copied | Change | Low | FR-INSP-14 (new) | TC-INSP-14 (new) | Verified |
-| ISS-003 | Editor disappears at the minimum window size when the verse is long | Bug | High | NFR-USE-02, FR-EDT-01 | TC-NFR-18 (manual, not run); gap → TC-NFR-24 | Verified |
-| ISS-004 | Long verses crowd out the writing area at the default window size | Change | Medium | FR-INSP-15 (new) | TC-INSP-15 (new) | Verified |
-| ISS-006 | Add a quill logo shown while the app runs | Change | Low | FR-UI-01 (new) | TC-UI-01, TC-UI-02 (new) | Verified |
-| ISS-007 | Windows Hello prompts are left open after the app closes or a test ends | Bug | Medium | FR-SEC-08, FR-SEC-09; gap → FR-SEC-20 (proposed) | TC-SEC-09 (gap) → TC-SEC-22 | Verified |
-| ISS-008 | Windows Hello prompts automatically on the unlock screen, including after every lock | Change | Medium | FR-SEC-08 (change) | TC-SEC-20 (change), TC-SEC-23 | Verified |
-| ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Verified |
-| ISS-005 | Font and size boxes are empty until the text is clicked | Bug | Low | FR-EDT-10 | TC-EDT-12 (gap) → TC-EDT-16 | Verified |
+| ISS-001 | Some daily verses start or end mid-sentence | Bug | Medium | FR-INSP-01, FR-INSP-03 | TC-INSP-01, TC-INSP-02 (gap) → TC-INSP-13 | Closed |
+| ISS-002 | Verse and quote can't be copied | Change | Low | FR-INSP-14 (new) | TC-INSP-14 (new) | Closed |
+| ISS-003 | Editor disappears at the minimum window size when the verse is long | Bug | High | NFR-USE-02, FR-EDT-01 | TC-NFR-18 (manual, not run); gap → TC-NFR-24 | Closed |
+| ISS-004 | Long verses crowd out the writing area at the default window size | Change | Medium | FR-INSP-15 (new) | TC-INSP-15 (new) | Closed |
+| ISS-005 | Font and size boxes are empty until the text is clicked | Bug | Low | FR-EDT-10 | TC-EDT-12 (gap) → TC-EDT-16 | Closed |
+| ISS-006 | Add a quill logo shown while the app runs | Change | Low | FR-UI-01 (new) | TC-UI-01, TC-UI-02 (new) | Closed |
+| ISS-007 | Windows Hello prompts are left open after the app closes or a test ends | Bug | Medium | FR-SEC-08, FR-SEC-09; gap → FR-SEC-20 (proposed) | TC-SEC-09 (gap) → TC-SEC-22 | Closed |
+| ISS-008 | Windows Hello prompts automatically on the unlock screen, including after every lock | Change | Medium | FR-SEC-08 (change) | TC-SEC-20 (change), TC-SEC-23 | Closed |
+| ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Closed |
 
 ---
 
@@ -46,7 +46,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | FR-INSP-01 (each day shall display a Bible verse: a sentence fragment isn't a usable verse); FR-INSP-03 (built-in list of verses). |
 | **Failing tests** | None failed. **Test gap:** TC-INSP-02 checked count, translation and reference format but not that each verse is a complete sentence; TC-INSP-01 only checks that a verse is shown. |
 | **Requirements changed** | FR-INSP-13 added (verses are complete passages; saved partial verses are shown in full). |
-| **Status** | Verified by the owner 2026-10-15. Fixed before this workflow was agreed. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-15. Fixed before this workflow was agreed. |
 
 **Description.** The verse for October 13, 2026 appeared incomplete.
 
@@ -72,7 +72,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements changed** | FR-INSP-14 added (selectable text and Copy buttons with citations). |
 | **Tests** | TC-INSP-14 added. |
-| **Status** | Verified by the owner 2026-10-15. Fixed before this workflow was agreed. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-15. Fixed before this workflow was agreed. |
 
 **Description.** The owner wants to copy the verse and quote to paste into another document.
 
@@ -91,7 +91,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Main window layout, verse and quote card |
 | **Failing requirements** | NFR-USE-02 (the UI shall be usable at a minimum window size of 1000×650); FR-EDT-01 (each tab shall contain a rich-text editor). |
 | **Failing tests** | TC-NFR-18 (manual: 100–200 % scaling and 1000×650, no clipped controls) would fail; it hasn't been run. **Test gap:** no automated test checks layout at the minimum size. |
-| **Status** | Verified by the owner 2026-10-15. Approved 2026-10-15. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-15. Approved 2026-10-15. |
 
 **Steps to reproduce.** Size the window to 1000×650. Open a day whose verse is Ecclesiastes 3:1-8 (688 characters, the longest built-in verse) with the Franklin quote (230 characters, the longest quote).
 
@@ -119,7 +119,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None explicitly: a design gap. No requirement limited the card's height. |
 | **Requirements to change** | Add FR-INSP-15: the verse and quote card shall not exceed a fixed maximum height; longer text scrolls within the card, and the Copy and Shuffle buttons stay visible. |
 | **Tests** | New: render at the default 1240×820 with the longest verse and quote; assert the card height is at most the cap and the editor keeps most of the right-hand column. |
-| **Status** | Verified by the owner 2026-10-15. Approved 2026-10-15. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-15. Approved 2026-10-15. |
 
 **Description.** At the default 1240×820 window, the longest verse makes the card about 280 px tall, leaving about 230 px for the editor. On long-verse days the page reads as a verse page rather than a journal.
 
@@ -140,7 +140,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Editor toolbar |
 | **Failing requirements** | FR-EDT-10 (toolbar controls shall reflect the formatting at the caret or selection). |
 | **Failing tests** | None failed. **Test gap:** TC-EDT-12 tests the formatting reader on a RichTextBox directly, not the editor's toolbar right after a day or tab loads. |
-| **Status** | Verified by the owner 2026-10-15. Approved 2026-10-15. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-15. Approved 2026-10-15. |
 
 **Steps to reproduce.** Open any day. Look at the font and size boxes before clicking in the text.
 
@@ -167,7 +167,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Branding: app icon and windows |
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | Add FR-UI-01: the app shall have a quill logo, used as the program icon (Start menu, desktop shortcut, Explorer), the window and taskbar icon of every window, and in the top bar of the main window, unlock window and setup wizard. |
-| **Status** | Verified by the owner 2026-10-15. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-15. |
 
 **Description.** The owner wants a logo, an icon of a quill, displayed when the app is running.
 
@@ -197,7 +197,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Unlocking, app lifecycle, test tooling |
 | **Failing requirements** | FR-SEC-08 and FR-SEC-09 (the unlock flow): a Windows Hello request outlives the unlock window and the app. No requirement says a pending request must be cancelled, so this is also a requirement gap. Proposed **FR-SEC-20**: a pending Windows Hello request shall be cancelled when the unlock window closes, when the app exits, and when the journal is unlocked another way (recovery code). |
 | **Failing tests** | None failed. **Test gap:** TC-SEC-09 only checks that a cancelled or failed prompt leaves the journal locked; nothing checks that closing the window cancels an open prompt. |
-| **Status** | Verified by the owner 2026-10-16. Approved 2026-10-16; option (a) chosen. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-16. Approved 2026-10-16; option (a) chosen. |
 
 **Description.** Windows Hello dialogs stay on screen after the app is closed or testing is finished, sometimes several at once.
 
@@ -241,7 +241,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Unlock window |
 | **Requirements to change** | FR-SEC-08 currently says the app *shall prompt* for Windows Hello on launch, and the unlock window does the same after every lock. Proposed: the unlock window shall not start Windows Hello by itself; it waits until the user clicks **Unlock with Windows Hello** (the default button, so Enter also works). |
 | **Tests to change** | TC-SEC-20 (manual) changes to "click the button, then verify". New TC-SEC-23 (automated): showing the unlock window makes no Windows Hello request; clicking the button makes exactly one. |
-| **Status** | Verified by the owner 2026-10-16. Approved 2026-10-16. |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-16. Approved 2026-10-16. |
 
 **Description.** After the journal locks, the Windows Hello dialog appears at once and waits on screen while the user is doing other things. The user wants it only when they click the unlock button.
 
@@ -264,7 +264,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Unlocking, Windows Hello integration |
 | **Failing requirements** | Design §14 promised to pass the window handle to Windows Hello "where supported"; the code doesn't. No requirement covers which display the prompt uses: a requirement gap. Proposed **NFR-USE-03**: authentication prompts shall appear on the display that shows the app. |
 | **Failing tests** | TC-SEC-20 (manual: "Hello prompt appears in front of the app") fails on a multi-display PC; it was never run with more than one display. **Test gap:** no test covers multiple displays. |
-| **Status** | Verified by the owner 2026-10-16 (option C). |
+| **Status** | Closed 2026-10-16. Verified by the owner 2026-10-16 (option C). |
 
 **Description.** With more than one display, the Windows Hello dialog opens on the main display even when the journal is on another one.
 
