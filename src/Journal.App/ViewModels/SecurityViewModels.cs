@@ -13,6 +13,8 @@ public sealed partial class UnlockViewModel : ObservableObject
 {
     private readonly VaultSession _session;
     private readonly Func<nint> _windowHandle;
+    private CancellationTokenSource? _helloRequest;
+    private int _busyCount;
 
     [ObservableProperty] private string _message = "Unlock your journal with Windows Hello.";
     [ObservableProperty] private string _error = "";
@@ -51,16 +53,46 @@ public sealed partial class UnlockViewModel : ObservableObject
         }
     }
 
+    public const string MainDisplayHint = "Windows Hello opens on your main display.";
+
+    /// <summary>Set by the window as it moves between displays.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowMainDisplayHint))]
+    private bool _isOnPrimaryDisplay = true;
+
+    /// <summary>
+    /// Windows always shows the key-signing dialog on the main display and won't let the app place it, so the
+    /// unlock window says so when it is on another display (ISS-009).
+    /// </summary>
+    public bool ShowMainDisplayHint => CanUseHello && !IsOnPrimaryDisplay;
+
+    partial void OnCanUseHelloChanged(bool value) => OnPropertyChanged(nameof(ShowMainDisplayHint));
+
+    /// <summary>True while a Windows Hello request is waiting for the user.</summary>
+    public bool IsHelloPending => _helloRequest is not null;
+
+    private void SetBusy(bool on)
+    {
+        _busyCount += on ? 1 : -1;
+        IsBusy = _busyCount > 0;
+    }
+
+    /// <summary>Asks Windows Hello only when the user clicks the button (ISS-008).</summary>
     [RelayCommand]
     private async Task TryHello()
     {
-        if (IsBusy) return;
-        IsBusy = true;
+        if (IsBusy || _session.IsUnlocked) return;
+        _helloRequest = new CancellationTokenSource();
+        SetBusy(true);
         Error = "";
         try
         {
-            await _session.UnlockWithHelloAsync(_windowHandle());
+            await _session.UnlockWithHelloAsync(_windowHandle(), _helloRequest.Token);
             Unlocked?.Invoke(this, new UnlockedEventArgs(false, false));
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by the app (window closed, exit, or recovery code used): nothing to report.
         }
         catch (UnlockFailedException e)
         {
@@ -70,9 +102,14 @@ public sealed partial class UnlockViewModel : ObservableObject
         }
         finally
         {
-            IsBusy = false;
+            _helloRequest.Dispose();
+            _helloRequest = null;
+            SetBusy(false);
         }
     }
+
+    /// <summary>Cancels a Windows Hello request that is waiting for the user, closing its dialog (ISS-007).</summary>
+    public void CancelPendingHello() => _helloRequest?.Cancel();
 
     [RelayCommand]
     private void UseRecoveryCode()
@@ -84,7 +121,9 @@ public sealed partial class UnlockViewModel : ObservableObject
     [RelayCommand]
     private async Task SubmitRecoveryCode()
     {
-        if (IsBusy) return;
+        // A waiting Windows Hello request doesn't block the recovery code; it is cancelled instead (ISS-007).
+        if (IsBusy && !IsHelloPending) return;
+        CancelPendingHello();
         Error = "";
         if (!RecoveryCode.TryParse(RecoveryInput, out var code))
         {
@@ -92,7 +131,7 @@ public sealed partial class UnlockViewModel : ObservableObject
             Error = "That recovery code didn't work.";
             return;
         }
-        IsBusy = true;
+        SetBusy(true);
         try
         {
             await _session.UnlockWithRecoveryCodeAsync(code);
@@ -105,7 +144,7 @@ public sealed partial class UnlockViewModel : ObservableObject
         }
         finally
         {
-            IsBusy = false;
+            SetBusy(false);
         }
     }
 
@@ -123,6 +162,7 @@ public sealed partial class SetupViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly Func<nint> _windowHandle;
     private RecoveryCode? _code;
+    private CancellationTokenSource? _helloRequest;
 
     public string DefaultFolder { get; }
     public string? OneDriveFolder { get; }
@@ -164,6 +204,16 @@ public sealed partial class SetupViewModel : ObservableObject
             : "Windows Hello isn't set up on this PC. To unlock with your fingerprint, face or PIN, turn it on in Windows Settings > Accounts > Sign-in options. You can continue now and use your recovery code to unlock until then.";
     }
 
+    /// <summary>Set by the window as it moves between displays.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowMainDisplayHint))]
+    private bool _isOnPrimaryDisplay = true;
+
+    /// <summary>Windows Hello's setup dialogs always open on the main display (ISS-009).</summary>
+    public bool ShowMainDisplayHint => HelloIsAvailable && !IsOnPrimaryDisplay;
+
+    partial void OnHelloIsAvailableChanged(bool value) => OnPropertyChanged(nameof(ShowMainDisplayHint));
+
     public bool CanFinish => _code is not null && RecoveryCode.NormalizeGroup(ConfirmInput) == _code.LastGroup;
 
     partial void OnConfirmInputChanged(string value)
@@ -171,6 +221,9 @@ public sealed partial class SetupViewModel : ObservableObject
         OnPropertyChanged(nameof(CanFinish));
         FinishCommand.NotifyCanExecuteChanged();
     }
+
+    /// <summary>Cancels a Windows Hello request started by Create, closing its dialog (ISS-007).</summary>
+    public void CancelPendingHello() => _helloRequest?.Cancel();
 
     [RelayCommand]
     private void UseDefault() => VaultFolder = DefaultFolder;
@@ -198,11 +251,12 @@ public sealed partial class SetupViewModel : ObservableObject
             return;
         }
         Step = SetupStep.Creating;
+        _helloRequest = new CancellationTokenSource();
         try
         {
             Directory.CreateDirectory(VaultFolder);
             Session = _sessionFactory(VaultFolder);
-            var result = await Session.CreateVaultAsync(HelloIsAvailable, _windowHandle());
+            var result = await Session.CreateVaultAsync(HelloIsAvailable, _windowHandle(), _helloRequest.Token);
             _code = result.RecoveryCode;
             RecoveryCodeText = result.RecoveryCode.Formatted;
             WeakerProtection = result.Hello == HelloProtection.Weaker;
@@ -210,10 +264,20 @@ public sealed partial class SetupViewModel : ObservableObject
             HelloIsAvailable = result.Hello != HelloProtection.None;
             Step = SetupStep.ShowCode;
         }
+        catch (OperationCanceledException)
+        {
+            // Setup window closed while Windows Hello was asking: nothing was created.
+            Step = SetupStep.Location;
+        }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             Error = $"The journal couldn't be created there: {e.Message}";
             Step = SetupStep.Location;
+        }
+        finally
+        {
+            _helloRequest?.Dispose();
+            _helloRequest = null;
         }
     }
 

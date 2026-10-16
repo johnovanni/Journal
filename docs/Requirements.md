@@ -26,7 +26,7 @@
 | FR-SEC-05 | If Windows Hello is not set up on the PC, setup shall explain how to enable it and allow the user to continue in recovery-code-only mode. | M |
 | FR-SEC-06 | Setup shall generate a recovery code of 25 Crockford base32 characters (5 groups of 5), display it once, and offer *Copy* and *Save to file*. | M |
 | FR-SEC-07 | Setup shall not finish until the user re-types the last group of the recovery code correctly. | M |
-| FR-SEC-08 | On launch with an existing vault, the app shall prompt for Windows Hello verification and open the journal on success, with no password. | M |
+| FR-SEC-08 | With an existing vault (at launch and after every lock), the unlock window shall offer **Unlock with Windows Hello** as its default button. Windows Hello shall be asked only when the user clicks it (or presses Enter), never automatically; on success the journal opens with no password. | M |
 | FR-SEC-09 | If Windows Hello fails, is cancelled, or is unavailable, the unlock window shall offer *Try Windows Hello again* and *Use recovery code*. | M |
 | FR-SEC-10 | Entering a valid recovery code shall unlock the vault. Input shall ignore case, spaces and dashes, and treat `O` as `0` and `I`/`L` as `1`. | M |
 | FR-SEC-11 | An invalid recovery code shall be rejected with a message and no information about which part was wrong. After 5 failed attempts, further attempts shall be delayed by 30 seconds. | M |
@@ -37,6 +37,7 @@
 | FR-SEC-16 | Before locking, the app shall save any unsaved changes. | M |
 | FR-SEC-17 | Locking shall clear all journal content from the window, discard decryption keys from memory, delete decrypted temporary attachment files, and show the unlock window. | M |
 | FR-SEC-18 | Settings shall allow, while unlocked: regenerating the recovery code (the old one stops working), re-enrolling Windows Hello, and removing the Hello slot of another PC. | M |
+| FR-SEC-20 | The app shall never leave a Windows Hello request waiting that the user can't see: tests and tools shall not start the app; closing the unlock or setup window, exiting, or starting a recovery-code unlock shall cancel a waiting request; and the recovery code shall work while a request is waiting. (Windows doesn't let an app close the dialog itself; see ISS-007.) | M |
 | FR-SEC-19 | Only one instance of the app shall run; launching again shall bring the existing window to the front. | S |
 
 ### 2.2 Entries and days (ENT)
@@ -203,6 +204,7 @@
 | NFR-PERF-04 | Typing latency in the editor shall stay under 50 ms; autosave runs off the UI thread. | M |
 | NFR-PERF-05 | Attachments up to 250 MB shall be encrypted and decrypted by streaming, using under 64 MB of extra memory. | M |
 | NFR-USE-01 | All main functions shall be usable from the keyboard; custom controls expose UI Automation names. | S |
+| NFR-USE-03 | When Windows will show an authentication prompt on a different display from the app (Windows always shows the Windows Hello key-signing dialog on the main display), the app shall say where it will appear. Where Windows allows it (the consent check), the prompt shall open over the app's window. | S |
 | NFR-USE-02 | The UI shall be usable at 100–200 % Windows display scaling and at a minimum window size of 1000×650. | M |
 | NFR-COMP-01 | The app shall run on Windows 10 (19041 or later) and Windows 11, x64 and ARM64, on .NET 10. | M |
 | NFR-MNT-01 | Code shall follow the layering in Design §3: `Journal.Core` has no references to WPF, WinRT or file-system-specific vault code. | M |

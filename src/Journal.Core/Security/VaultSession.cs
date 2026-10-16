@@ -87,13 +87,13 @@ public sealed class VaultSession(
 
     public void UnregisterBeforeLock(Func<LockReason, Task> handler) => _beforeLock.Remove(handler);
 
-    public async Task UnlockWithHelloAsync(nint windowHandle = 0)
+    public async Task UnlockWithHelloAsync(nint windowHandle = 0, CancellationToken cancellation = default)
     {
         var header = Header ?? await LoadHeaderAsync();
         var slot = header.HelloSlotFor(machine.MachineName)
                    ?? throw new UnlockFailedException(UnlockFailure.NotAvailable, "Windows Hello isn't set up for this journal on this PC.");
         var protector = ProtectorFor(slot.Type);
-        var key = await protector.UnprotectAsync(slot, header, new UnlockContext(WindowHandle: windowHandle));
+        var key = await protector.UnprotectAsync(slot, header, new UnlockContext(WindowHandle: windowHandle, Cancellation: cancellation));
         Open(header, key);
     }
 
@@ -143,7 +143,7 @@ public sealed class VaultSession(
 
     // ----- Key slot management (setup and Settings, FR-SEC-03..07, FR-SEC-12, FR-SEC-18) -----
 
-    public async Task<SetupResult> CreateVaultAsync(bool useHello, nint windowHandle = 0)
+    public async Task<SetupResult> CreateVaultAsync(bool useHello, nint windowHandle = 0, CancellationToken cancellation = default)
     {
         var header = new VaultHeader
         {
@@ -152,24 +152,34 @@ public sealed class VaultSession(
         };
         var dataKey = SecretKey.Generate();
         var code = RecoveryCode.Generate();
-        header.KeySlots.Add(await ProtectorFor(KeySlotTypes.RecoveryCode)
-            .ProtectAsync(dataKey, header, new UnlockContext(code)));
+        try
+        {
+            header.KeySlots.Add(await ProtectorFor(KeySlotTypes.RecoveryCode)
+                .ProtectAsync(dataKey, header, new UnlockContext(code)));
 
-        var (hello, message) = useHello
-            ? await TryAddHelloSlotAsync(header, dataKey, windowHandle)
-            : (HelloProtection.None, "Windows Hello isn't set up on this PC.");
+            var (hello, message) = useHello
+                ? await TryAddHelloSlotAsync(header, dataKey, windowHandle, cancellation)
+                : (HelloProtection.None, "Windows Hello isn't set up on this PC.");
 
-        await headerStore.SaveAsync(header);
-        Open(header, dataKey);
-        return new SetupResult(code, hello, message);
+            cancellation.ThrowIfCancellationRequested();
+            await headerStore.SaveAsync(header);
+            Open(header, dataKey);
+            return new SetupResult(code, hello, message);
+        }
+        catch
+        {
+            // Cancelled or failed setup: nothing was saved, so wipe the key.
+            dataKey.Dispose();
+            throw;
+        }
     }
 
-    public async Task<(HelloProtection Protection, string? Message)> EnrollHelloAsync(nint windowHandle = 0)
+    public async Task<(HelloProtection Protection, string? Message)> EnrollHelloAsync(nint windowHandle = 0, CancellationToken cancellation = default)
     {
         var header = RequireHeader();
         header.KeySlots.RemoveAll(s => s.Type is KeySlotTypes.WindowsHello or KeySlotTypes.HelloDpapi &&
                                        string.Equals(s.Machine, machine.MachineName, StringComparison.OrdinalIgnoreCase));
-        var result = await TryAddHelloSlotAsync(header, DataKey, windowHandle);
+        var result = await TryAddHelloSlotAsync(header, DataKey, windowHandle, cancellation);
         await headerStore.SaveAsync(header);
         return result;
     }
@@ -198,9 +208,9 @@ public sealed class VaultSession(
         Header?.KeySlots.Where(s => s.Type is KeySlotTypes.WindowsHello or KeySlotTypes.HelloDpapi)
             .Select(s => s.Machine ?? "?").Distinct().ToList() ?? [];
 
-    private async Task<(HelloProtection, string?)> TryAddHelloSlotAsync(VaultHeader header, SecretKey dataKey, nint hwnd)
+    private async Task<(HelloProtection, string?)> TryAddHelloSlotAsync(VaultHeader header, SecretKey dataKey, nint hwnd, CancellationToken cancellation)
     {
-        var ctx = new UnlockContext(WindowHandle: hwnd);
+        var ctx = new UnlockContext(WindowHandle: hwnd, Cancellation: cancellation);
         if (_protectors.TryGetValue(KeySlotTypes.WindowsHello, out var hello) && await hello.IsAvailableAsync())
         {
             try

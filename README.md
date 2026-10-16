@@ -17,6 +17,12 @@ dotnet run --project src/Journal.App
 
 Requires Windows 10 (19041) or later and the .NET 10 SDK. Windows Hello (PIN at minimum, ideally fingerprint or face) must be set up in Windows Settings > Accounts > Sign-in options to unlock without the recovery code.
 
+## Windows Hello notes
+
+- The journal asks Windows Hello only when you click **Unlock with Windows Hello** (or press Enter).
+- The Windows Hello dialog belongs to Windows. If you close the journal while that dialog is waiting, the dialog stays open until you cancel it; the journal can't close it for you. Cancelling it is harmless.
+- Windows decides where the dialog appears. For the journal's normal unlock it always opens on your main display, even when the journal is on another display; Windows doesn't let an app place or move it.
+
 ## Tests
 
 ```bash

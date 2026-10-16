@@ -40,6 +40,7 @@ public sealed class AppController : ISettingsHost
     private MainWindow? _main;
     private MainViewModel? _mainVm;
     private bool _locking;
+    private Action? _cancelPendingHello;
     private bool _exiting;
 
     public AppController(ISettingsStore settingsStore, ILogger log)
@@ -77,6 +78,7 @@ public sealed class AppController : ISettingsHost
         var vm = new SetupViewModel(CreateSession, () => new WinRtHelloCredentialApi().IsSupportedAsync(), _dialogs,
             () => window?.Handle ?? 0, AppPaths.DefaultVaultFolder, AppPaths.OneDriveFolder);
         window = new SetupWindow(vm);
+        _cancelPendingHello = vm.CancelPendingHello;
         vm.Completed += async (_, _) =>
         {
             done = true;
@@ -106,6 +108,7 @@ public sealed class AppController : ISettingsHost
         bool done = false;
         var vm = new UnlockViewModel(_session, () => window?.Handle ?? 0);
         window = new UnlockWindow(vm);
+        _cancelPendingHello = vm.CancelPendingHello;
         vm.Unlocked += async (_, args) =>
         {
             done = true;
@@ -285,6 +288,7 @@ public sealed class AppController : ISettingsHost
     private void Exit()
     {
         _exiting = true;
+        _cancelPendingHello?.Invoke();
         SystemEvents.SessionSwitch -= OnSessionSwitch;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         _temp.CleanAll();
@@ -295,6 +299,7 @@ public sealed class AppController : ISettingsHost
     public void OnApplicationExit()
     {
         _exiting = true;
+        _cancelPendingHello?.Invoke();
         if (_session is { IsUnlocked: true })
         {
             try { LockAsync(LockReason.Exit).GetAwaiter().GetResult(); }

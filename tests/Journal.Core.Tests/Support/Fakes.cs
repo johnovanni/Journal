@@ -164,25 +164,40 @@ public sealed class FakeKeyProtector(string slotType, string secret = "open sesa
     public bool Available { get; set; } = true;
     public UnlockFailure? FailWith { get; set; }
     public IMachineIdentity? Machine { get; set; }
+    /// <summary>When set, UnprotectAsync waits until cancelled, like a Windows Hello dialog nobody answers.</summary>
+    public bool WaitForUser { get; set; }
+    public int UnprotectCalls { get; private set; }
+    public bool SawCancellation { get; private set; }
 
     public Task<bool> IsAvailableAsync() => Task.FromResult(Available);
 
-    public Task<KeySlot> ProtectAsync(SecretKey dataKey, VaultHeader header, UnlockContext context)
+    public async Task<KeySlot> ProtectAsync(SecretKey dataKey, VaultHeader header, UnlockContext context)
     {
+        if (WaitForUser)
+        {
+            try { await Task.Delay(Timeout.Infinite, context.Cancellation); }
+            catch (OperationCanceledException) { SawCancellation = true; throw; }
+        }
         var mask = Mask(context);
         var wrapped = dataKey.Span.ToArray().Select((b, i) => (byte)(b ^ mask[i])).ToArray();
         var check = SHA256.HashData(dataKey.Span);
-        return Task.FromResult(new KeySlot { Type = slotType, Machine = Machine?.MachineName, WrappedKey = [.. wrapped, .. check] });
+        return new KeySlot { Type = slotType, Machine = Machine?.MachineName, WrappedKey = [.. wrapped, .. check] };
     }
 
-    public Task<SecretKey> UnprotectAsync(KeySlot slot, VaultHeader header, UnlockContext context)
+    public async Task<SecretKey> UnprotectAsync(KeySlot slot, VaultHeader header, UnlockContext context)
     {
+        UnprotectCalls++;
+        if (WaitForUser)
+        {
+            try { await Task.Delay(Timeout.Infinite, context.Cancellation); }
+            catch (OperationCanceledException) { SawCancellation = true; throw; }
+        }
         if (FailWith is { } f) throw new UnlockFailedException(f, $"Fake failure: {f}");
         var mask = Mask(context);
         var key = slot.WrappedKey.Take(32).Select((b, i) => (byte)(b ^ mask[i])).ToArray();
         if (!SHA256.HashData(key).SequenceEqual(slot.WrappedKey.Skip(32)))
             throw new UnlockFailedException(UnlockFailure.WrongKey, "That recovery code didn't work.");
-        return Task.FromResult(SecretKey.FromBytes(key));
+        return SecretKey.FromBytes(key);
     }
 
     private byte[] Mask(UnlockContext ctx) =>

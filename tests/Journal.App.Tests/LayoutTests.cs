@@ -16,6 +16,22 @@ namespace Journal.App.Tests;
 /// Hosts the real WPF Application (with the app's theme resources) on one STA thread for tests that
 /// create real windows. All such tests run on this thread, one at a time.
 /// </summary>
+/// <summary>Creates a plain WPF Application that carries Journal's theme and resources, without the app's startup.</summary>
+public static class UiHost
+{
+    public static Application CreateApplication()
+    {
+        Application.ResourceAssembly ??= typeof(Journal.App.App).Assembly;
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        foreach (var path in new[] { "Assets/Quill.xaml", "Themes/Theme.xaml" })
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri($"pack://application:,,,/Journal;component/{path}"),
+            });
+        return app;
+    }
+}
+
 public static class AppThread
 {
     private static readonly Lazy<Dispatcher> Host = new(() =>
@@ -23,8 +39,10 @@ public static class AppThread
         var ready = new TaskCompletionSource<Dispatcher>();
         var thread = new Thread(() =>
         {
-            var app = new Journal.App.App();
-            app.InitializeComponent();
+            // Never create Journal.App.App: WPF runs an Application's startup as soon as its dispatcher runs,
+            // which would start the real app (unlock window, Windows Hello) on the user's PC (ISS-007).
+            // A plain Application with the app's resources is enough for real windows.
+            UiHost.CreateApplication();
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
             ready.SetResult(Dispatcher.CurrentDispatcher);
             Dispatcher.Run();

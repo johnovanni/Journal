@@ -6,6 +6,7 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>Journal.App</RootNamespace>
     <AssemblyName>Journal</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Journal.ico</ApplicationIcon>
   </PropertyGroup>

@@ -1,6 +1,7 @@
 <Window x:Class="Journal.App.Views.UnlockWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Journal.App.ViewModels"
         Title="Journal" Width="460" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen" Style="{StaticResource AppWindow}">
     <Border Padding="32,28">
@@ -18,6 +19,13 @@
                     <TextBlock Text="Unlock with Windows Hello" Margin="8,0,0,0" />
                 </StackPanel>
             </Button>
+            <StackPanel Orientation="Horizontal" Margin="2,8,0,0"
+                        Visibility="{Binding ShowMainDisplayHint, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="&#xE7F4;" FontFamily="{StaticResource IconFont}" Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" />
+                <TextBlock x:Name="MainDisplayHint" Text="{x:Static vm:UnlockViewModel.MainDisplayHint}" Style="{StaticResource Muted}"
+                           Margin="8,0,0,0" VerticalAlignment="Center"
+                           Visibility="{Binding ShowMainDisplayHint, Converter={StaticResource BoolToVis}}" />
+            </StackPanel>
 
             <TextBlock Text="{Binding Error}" Style="{StaticResource ErrorText}" Margin="0,12,0,0" />
 

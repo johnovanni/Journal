@@ -44,8 +44,12 @@
 | TC-SEC-16 | FR-SEC-16, FR-ENT-05 | A | Type in the editor, lock within 1 s (before the autosave delay). | Repository received `SaveAsync` with the new text before `Locked` was raised. |
 | TC-SEC-17 | FR-SEC-17 | I | Unlock, open an attachment (temp file created), lock. | Temp folder empty; `SecretKey` buffers are all zero; main VM's `CurrentEntry` is null; unlock window requested. |
 | TC-SEC-18 | FR-SEC-18 | I | Regenerate recovery code; try old code; try new code. Re-enroll Hello. Remove other machine's Hello slot. | Old code fails, new code works; Hello slot replaced; removed slot no longer in `vault.json`; journal content unchanged. |
+| TC-SEC-22 | FR-SEC-20 | A/I | Fake Windows Hello that waits for the user: cancel the request; use the recovery code while it waits; close the unlock window; close the setup window during creation; pass cancellation down to the Windows Hello API; check the UI test host isn't the real app. | Each request ends promptly and the fake sees the cancellation; the journal stays locked unless the recovery code was used; the test host never starts the app. |
+| TC-SEC-23 | FR-SEC-08 | A | Show the real unlock window for a vault with a Windows Hello slot and wait; then click Unlock with Windows Hello. | No Windows Hello request until the button; then exactly one, and the journal unlocks. |
+| TC-SEC-24 | NFR-USE-03 | M | On a PC with several displays: put the journal on a side display, lock it, click Unlock with Windows Hello; repeat with the unlock window on the main display. | Side display: the hint "Windows Hello opens on your main display" shows and the dialog opens on the main display. Main display: no hint. |
+| TC-SEC-25 | NFR-USE-03 | A/I | Unlock and setup view models on and off the main display, with and without Windows Hello; the real unlock window moved between the main and a side display; the fallback unlock with a window handle. | Hint only when Windows Hello is offered and the window is on a side display; the real window shows and hides it as it moves; the fallback passes the window to Windows Hello. |
 | TC-SEC-19 | FR-SEC-19 | M | Launch the app twice. | One window; second launch brings the first to the front. |
-| TC-SEC-20 | FR-SEC-03, FR-SEC-08 | M | On a real PC: run setup with fingerprint/face, close app, relaunch and unlock with biometric; repeat with PIN. | Hello prompt appears in front of the app; unlock works with biometric and with PIN. |
+| TC-SEC-20 | FR-SEC-03, FR-SEC-08 | M | On a real PC: run setup with fingerprint/face, close app, relaunch; check no Windows Hello prompt appears until Unlock with Windows Hello is clicked; unlock with biometric; repeat with PIN. | No prompt before the click; unlock works with biometric and with PIN. |
 | TC-SEC-21 | FR-SEC-10, FR-SEC-12 | M | Copy the vault to a second PC (or new Windows user), unlock with recovery code, accept Hello enrollment, relaunch. | Recovery unlock works; after enrollment the second PC unlocks with Hello. |
 
 ### 2.2 Entries and days
@@ -233,7 +237,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 ## 3. Traceability matrix
 
-135 requirements, 148 test cases. Every requirement is covered by at least one test.
+137 requirements, 152 test cases. Every requirement is covered by at least one test.
 
 | Requirement | Pri | Test cases |
 |---|---|---|
@@ -244,7 +248,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-SEC-05 | M | TC-SEC-05 (A) |
 | FR-SEC-06 | M | TC-SEC-06 (U) |
 | FR-SEC-07 | M | TC-SEC-07 (A) |
-| FR-SEC-08 | M | TC-SEC-08 (I), TC-SEC-20 (M) |
+| FR-SEC-08 | M | TC-SEC-08 (I), TC-SEC-23 (A), TC-SEC-20 (M) |
 | FR-SEC-09 | M | TC-SEC-09 (A) |
 | FR-SEC-10 | M | TC-SEC-10 (I), TC-SEC-21 (M) |
 | FR-SEC-11 | M | TC-SEC-11 (A) |
@@ -255,6 +259,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-SEC-16 | M | TC-SEC-16 (A) |
 | FR-SEC-17 | M | TC-SEC-17 (I) |
 | FR-SEC-18 | M | TC-SEC-18 (I) |
+| FR-SEC-20 | M | TC-SEC-22 (A/I) |
 | FR-SEC-19 | S | TC-SEC-19 (M) |
 | FR-ENT-01 | M | TC-ENT-01 (I) |
 | FR-ENT-02 | M | TC-ENT-02 (A) |
@@ -366,6 +371,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | NFR-PERF-04 | M | TC-NFR-16 (M) |
 | NFR-PERF-05 | M | TC-ATT-08 (I) |
 | NFR-USE-01 | S | TC-NFR-17 (M) |
+| NFR-USE-03 | S | TC-SEC-24 (M), TC-SEC-25 (A/I) |
 | NFR-USE-02 | M | TC-NFR-18 (M), TC-NFR-24 (A) |
 | NFR-COMP-01 | M | TC-NFR-19 (M) |
 | NFR-MNT-01 | M | TC-NFR-20 (U) |

@@ -9,9 +9,9 @@ public interface IHelloCredentialApi
 {
     Task<bool> IsSupportedAsync();
     /// <summary>Creates (or replaces) a TPM-backed key; prompts the user. Throws <see cref="UnlockFailedException"/>.</summary>
-    Task CreateAsync(string name, nint windowHandle);
+    Task CreateAsync(string name, nint windowHandle, CancellationToken cancellation = default);
     /// <summary>Signs <paramref name="data"/> after a Windows Hello check. Throws <see cref="UnlockFailedException"/>.</summary>
-    Task<byte[]> SignAsync(string name, byte[] data, nint windowHandle);
+    Task<byte[]> SignAsync(string name, byte[] data, nint windowHandle, CancellationToken cancellation = default);
     Task DeleteAsync(string name);
 }
 
@@ -20,7 +20,7 @@ public interface IUserConsentApi
 {
     Task<bool> IsAvailableAsync();
     /// <summary>Returns true when the user passed the check.</summary>
-    Task<bool> VerifyAsync(string message, nint windowHandle);
+    Task<bool> VerifyAsync(string message, nint windowHandle, CancellationToken cancellation = default);
 }
 
 /// <summary>
@@ -38,9 +38,9 @@ public sealed class WindowsHelloKeyProtector(IHelloCredentialApi hello, IMachine
     public async Task<KeySlot> ProtectAsync(SecretKey dataKey, VaultHeader header, UnlockContext context)
     {
         var name = CredentialName(header.VaultId);
-        await hello.CreateAsync(name, context.WindowHandle);
-        var first = await hello.SignAsync(name, header.HelloChallenge, context.WindowHandle);
-        var second = await hello.SignAsync(name, header.HelloChallenge, context.WindowHandle);
+        await hello.CreateAsync(name, context.WindowHandle, context.Cancellation);
+        var first = await hello.SignAsync(name, header.HelloChallenge, context.WindowHandle, context.Cancellation);
+        var second = await hello.SignAsync(name, header.HelloChallenge, context.WindowHandle, context.Cancellation);
         try
         {
             if (!CryptographicOperations.FixedTimeEquals(first, second))
@@ -66,7 +66,8 @@ public sealed class WindowsHelloKeyProtector(IHelloCredentialApi hello, IMachine
 
     public async Task<SecretKey> UnprotectAsync(KeySlot slot, VaultHeader header, UnlockContext context)
     {
-        var signature = await hello.SignAsync(slot.CredentialName ?? CredentialName(header.VaultId), header.HelloChallenge, context.WindowHandle);
+        var signature = await hello.SignAsync(slot.CredentialName ?? CredentialName(header.VaultId), header.HelloChallenge,
+            context.WindowHandle, context.Cancellation);
         try
         {
             using var kek = KeyDerivation.HelloKek(signature, header.HelloChallenge);
@@ -102,7 +103,7 @@ public sealed class HelloGatedDpapiProtector(IUserConsentApi consent, IMachineId
 
     public async Task<SecretKey> UnprotectAsync(KeySlot slot, VaultHeader header, UnlockContext context)
     {
-        if (!await consent.VerifyAsync("Unlock your journal", context.WindowHandle))
+        if (!await consent.VerifyAsync("Unlock your journal", context.WindowHandle, context.Cancellation))
             throw new UnlockFailedException(UnlockFailure.Cancelled, "Windows Hello verification was cancelled.");
         byte[] plain;
         try

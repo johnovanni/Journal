@@ -15,21 +15,21 @@ public sealed class WinRtHelloCredentialApi : IHelloCredentialApi
         catch (Exception) { return false; }
     }
 
-    public async Task CreateAsync(string name, nint windowHandle)
+    public async Task CreateAsync(string name, nint windowHandle, CancellationToken cancellation = default)
     {
         Foreground.Bring(windowHandle);
-        var result = await KeyCredentialManager.RequestCreateAsync(name, KeyCredentialCreationOption.ReplaceExisting);
+        var result = await KeyCredentialManager.RequestCreateAsync(name, KeyCredentialCreationOption.ReplaceExisting).AsTask(cancellation);
         Check(result.Status);
     }
 
-    public async Task<byte[]> SignAsync(string name, byte[] data, nint windowHandle)
+    public async Task<byte[]> SignAsync(string name, byte[] data, nint windowHandle, CancellationToken cancellation = default)
     {
         var open = await KeyCredentialManager.OpenAsync(name);
         if (open.Status == KeyCredentialStatus.NotFound)
             throw new UnlockFailedException(UnlockFailure.NotAvailable, "This PC has no Windows Hello key for this journal.");
         Check(open.Status);
         Foreground.Bring(windowHandle);
-        var signed = await open.Credential.RequestSignAsync(CryptographicBuffer.CreateFromByteArray(data));
+        var signed = await open.Credential.RequestSignAsync(CryptographicBuffer.CreateFromByteArray(data)).AsTask(cancellation);
         Check(signed.Status);
         CryptographicBuffer.CopyToByteArray(signed.Result, out var bytes);
         return bytes;
@@ -69,10 +69,14 @@ public sealed class WinRtUserConsentApi : IUserConsentApi
         catch (Exception) { return false; }
     }
 
-    public async Task<bool> VerifyAsync(string message, nint windowHandle)
+    public async Task<bool> VerifyAsync(string message, nint windowHandle, CancellationToken cancellation = default)
     {
         Foreground.Bring(windowHandle);
-        var result = await UserConsentVerifier.RequestVerificationAsync(message);
+        // With a window, Windows opens the dialog over it on the journal's display (ISS-009, option A).
+        var request = windowHandle != 0
+            ? UserConsentVerifierInterop.RequestVerificationForWindowAsync(windowHandle, message)
+            : UserConsentVerifier.RequestVerificationAsync(message);
+        var result = await request.AsTask(cancellation);
         return result == UserConsentVerificationResult.Verified;
     }
 }

@@ -71,7 +71,8 @@ public sealed class NonDeterministicSignatureException()
     : Exception("Windows Hello produced different signatures for the same data, so it can't be used to derive a key.");
 
 /// <summary>Extra input an unlock method may need.</summary>
-public sealed record UnlockContext(RecoveryCode? RecoveryCode = null, nint WindowHandle = 0);
+/// <param name="Cancellation">Cancels a pending Windows Hello request (closes its dialog).</param>
+public sealed record UnlockContext(RecoveryCode? RecoveryCode = null, nint WindowHandle = 0, CancellationToken Cancellation = default);
 
 /// <summary>
 /// Strategy for protecting the data key with one unlock method (Windows Hello, recovery code, ...).

@@ -38,6 +38,8 @@
                 </StackPanel>
                 <TextBlock Text="UNLOCKING" Style="{StaticResource Label}" Margin="0,20,0,6" />
                 <TextBlock Text="{Binding HelloMessage}" Style="{StaticResource Muted}" />
+                <TextBlock Text="{x:Static vm:UnlockViewModel.MainDisplayHint}" Style="{StaticResource Muted}" Margin="0,6,0,0"
+                           Visibility="{Binding ShowMainDisplayHint, Converter={StaticResource BoolToVis}}" />
                 <TextBlock Text="{Binding Error}" Style="{StaticResource ErrorText}" Margin="0,10,0,0" />
                 <Button Style="{StaticResource PrimaryButton}" Content="Create my journal" Margin="0,22,0,0" Padding="16,9"
                         HorizontalAlignment="Left" Command="{Binding CreateCommand}" IsDefault="True" />
@@ -56,6 +58,8 @@
                 </StackPanel.Style>
                 <TextBlock Style="{StaticResource Muted}" Margin="0,12,0,12"
                            Text="Creating your journal. Windows Hello will ask you to verify a few times while it sets up the key." />
+                <TextBlock Text="{x:Static vm:UnlockViewModel.MainDisplayHint}" Style="{StaticResource Muted}" Margin="0,0,0,12"
+                           Visibility="{Binding ShowMainDisplayHint, Converter={StaticResource BoolToVis}}" />
                 <ProgressBar IsIndeterminate="True" Height="4" />
             </StackPanel>
 

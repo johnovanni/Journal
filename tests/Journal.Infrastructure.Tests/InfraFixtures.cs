@@ -22,20 +22,29 @@ public sealed class FakeHelloApi : IHelloCredentialApi
 
     public Task<bool> IsSupportedAsync() => Task.FromResult(Supported);
 
-    public Task CreateAsync(string name, nint windowHandle)
+    public Task CreateAsync(string name, nint windowHandle, CancellationToken cancellation = default)
     {
         if (Cancel) throw new UnlockFailedException(UnlockFailure.Cancelled, "cancelled");
         _keys[name] = RandomNumberGenerator.GetBytes(32);
         return Task.CompletedTask;
     }
 
-    public Task<byte[]> SignAsync(string name, byte[] data, nint windowHandle)
+    /// <summary>When set, SignAsync waits until it is cancelled, like a Windows Hello dialog nobody answers.</summary>
+    public bool WaitForUser { get; set; }
+    public bool SawCancellation { get; private set; }
+
+    public async Task<byte[]> SignAsync(string name, byte[] data, nint windowHandle, CancellationToken cancellation = default)
     {
+        if (WaitForUser)
+        {
+            try { await Task.Delay(Timeout.Infinite, cancellation); }
+            catch (OperationCanceledException) { SawCancellation = true; throw; }
+        }
         if (Cancel) throw new UnlockFailedException(UnlockFailure.Cancelled, "cancelled");
         if (!_keys.TryGetValue(name, out var key)) throw new UnlockFailedException(UnlockFailure.NotAvailable, "no key");
         SignCalls.Add((name, data));
         byte[] input = Deterministic ? data : [.. data, .. RandomNumberGenerator.GetBytes(8)];
-        return Task.FromResult(HMACSHA256.HashData(key, input).Concat(new byte[224]).ToArray());
+        return HMACSHA256.HashData(key, input).Concat(new byte[224]).ToArray();
     }
 
     public Task DeleteAsync(string name)
@@ -50,7 +59,12 @@ public sealed class FakeConsentApi : IUserConsentApi
     public bool Available { get; set; } = true;
     public bool Verified { get; set; } = true;
     public Task<bool> IsAvailableAsync() => Task.FromResult(Available);
-    public Task<bool> VerifyAsync(string message, nint windowHandle) => Task.FromResult(Verified);
+    public nint LastWindowHandle { get; private set; }
+    public Task<bool> VerifyAsync(string message, nint windowHandle, CancellationToken cancellation = default)
+    {
+        LastWindowHandle = windowHandle;
+        return Task.FromResult(Verified);
+    }
 }
 
 /// <summary>A real vault in a temporary folder with fast PBKDF2 for most tests.</summary>
