@@ -31,7 +31,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-006 | Add a quill logo shown while the app runs | Change | Low | FR-UI-01 (new) | TC-UI-01, TC-UI-02 (new) | Verified |
 | ISS-007 | Windows Hello prompts are left open after the app closes or a test ends | Bug | Medium | FR-SEC-08, FR-SEC-09; gap → FR-SEC-20 (proposed) | TC-SEC-09 (gap) → TC-SEC-22 | Verified |
 | ISS-008 | Windows Hello prompts automatically on the unlock screen, including after every lock | Change | Medium | FR-SEC-08 (change) | TC-SEC-20 (change), TC-SEC-23 | Verified |
-| ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Fixed (awaiting verification) |
+| ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Verified |
 | ISS-005 | Font and size boxes are empty until the text is clicked | Bug | Low | FR-EDT-10 | TC-EDT-12 (gap) → TC-EDT-16 | Verified |
 
 ---
@@ -264,7 +264,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Unlocking, Windows Hello integration |
 | **Failing requirements** | Design §14 promised to pass the window handle to Windows Hello "where supported"; the code doesn't. No requirement covers which display the prompt uses: a requirement gap. Proposed **NFR-USE-03**: authentication prompts shall appear on the display that shows the app. |
 | **Failing tests** | TC-SEC-20 (manual: "Hello prompt appears in front of the app") fails on a multi-display PC; it was never run with more than one display. **Test gap:** no test covers multiple displays. |
-| **Status** | Fixed (awaiting verification). Approved 2026-10-16; option C chosen. |
+| **Status** | Verified by the owner 2026-10-16 (option C). |
 
 **Description.** With more than one display, the Windows Hello dialog opens on the main display even when the journal is on another one.
 
