@@ -48,6 +48,7 @@
 | TC-SEC-23 | FR-SEC-08 | A | Show the real unlock window for a vault with a Windows Hello slot and wait; then click Unlock with Windows Hello. | No Windows Hello request until the button; then exactly one, and the journal unlocks. |
 | TC-SEC-24 | NFR-USE-03 | M | On a PC with several displays: put the journal on a side display, lock it, click Unlock with Windows Hello; repeat with the unlock window on the main display. | Side display: the hint "Windows Hello opens on your main display" shows and the dialog opens on the main display. Main display: no hint. |
 | TC-SEC-25 | NFR-USE-03 | A/I | Unlock and setup view models on and off the main display, with and without Windows Hello; the real unlock window moved between the main and a side display; the fallback unlock with a window handle. | Hint only when Windows Hello is offered and the window is on a side display; the real window shows and hides it as it moves; the fallback passes the window to Windows Hello. |
+| TC-SEC-26 | FR-SEC-21 | A/M | Automated, on a real window with the app's close handling: close when locking finishes at once (nothing to save, the case that failed); close while a save takes time, clicking close again meanwhile; close when saving fails; close after the handling is detached (a normal lock). Manual: close Journal with the X after editing and without editing, then start it again. | Each close needs one click; save-and-lock runs once; the window closes and shutdown is requested exactly once; a failing save is reported and the app still shuts down; after detaching, the window just closes. Manually, Journal leaves Task Manager within a few seconds and starts again normally. |
 | TC-SEC-19 | FR-SEC-19 | M | Launch the app twice. | One window; second launch brings the first to the front. |
 | TC-SEC-20 | FR-SEC-03, FR-SEC-08 | M | On a real PC: run setup with fingerprint/face, close app, relaunch; check no Windows Hello prompt appears until Unlock with Windows Hello is clicked; unlock with biometric; repeat with PIN. | No prompt before the click; unlock works with biometric and with PIN. |
 | TC-SEC-21 | FR-SEC-10, FR-SEC-12 | M | Copy the vault to a second PC (or new Windows user), unlock with recovery code, accept Hello enrollment, relaunch. | Recovery unlock works; after enrollment the second PC unlocks with Hello. |
@@ -70,7 +71,7 @@
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
-| TC-EDT-01 | FR-EDT-01 | M | Type a paragraph, cut/paste a sentence, undo, redo. | Works as in WordPad. |
+| TC-EDT-01 | FR-EDT-01, FR-EDT-13 | M | Type a paragraph, cut/paste a sentence, undo, redo. Copy a checklist (one item ticked), an image and a file to another day and paste; cut an image and paste it further down; drag a heading to another place; lock and unlock. Paste the checklist into Notepad. | Works as in WordPad. The pasted checklist, image and file match the originals; the cut image is still there after locking and unlocking; the dragged heading moved and kept its style. Notepad shows ☐ and ☑. |
 | TC-EDT-02 | FR-EDT-02, FR-EDT-11 | A | Map a document with runs: bold, italic, underline, strikethrough, bold+italic+strikethrough to `FlowDocument` and back. | Round-trip model equals original; `TextDecorations` contain Underline / Strikethrough as expected. |
 | TC-EDT-03 | FR-EDT-02 | A | Select text, execute the Ctrl+Shift+X command. | Selection gets strikethrough; executing again removes it. |
 | TC-EDT-04 | FR-EDT-03, FR-EDT-04, FR-EDT-11 | A | Runs with `FontFamily = "Georgia"`, size 8, 12, 72; one run with defaults. Round trip. | Values preserved; default run keeps null font/size in the model. |
@@ -80,11 +81,12 @@
 | TC-EDT-08 | FR-EDT-07, FR-EDT-11 | A | Numbered list of 3 items with a nested bulleted list (2 items, level 1) under item 2, then a level-3 item. Round trip; then delete item 1. | Structure and levels preserved; WPF `List` markers Decimal/Disc; after deletion remaining numbers render as 1, 2. |
 | TC-EDT-09 | FR-EDT-07 | A | Press Tab on a level-3 item; Shift+Tab on a level-0 item. | Level stays 3 (max 4 levels, 0–3); Shift+Tab at level 0 turns item into normal paragraph. |
 | TC-EDT-10 | FR-EDT-08, FR-EDT-11 | A | Two checklist items, second ticked. Round trip. Toggle first via `ToggleChecked`. | `IsChecked` preserved; each item's first inline is a `CheckBox`; toggle sets first item checked. |
-| TC-EDT-11 | FR-EDT-09 | A | Tick a checklist item, then untick. | Rendered runs get strikethrough when ticked, lose it when unticked; stored run format unchanged (display-only). |
+| TC-EDT-11 | FR-EDT-09 | A | Tick a checklist item, then untick. Render a ticked item with and without its strikethrough. | Rendered runs get strikethrough when ticked, lose it when unticked; stored run format unchanged (display-only). The checkbox and the gap before the text render identically with and without the strikethrough (no line through the checkbox, ISS-014); the text area differs. |
 | TC-EDT-12 | FR-EDT-10 | A | Place caret in a bold Georgia 14 pt red run in a numbered list; call `SyncFromSelection`. | Toolbar VM: IsBold, Font Georgia, Size 14, red, CurrentList = Numbered. Mixed selection shows empty font/size. |
 | TC-EDT-13 | FR-EDT-11 | A | Property-based test: 500 random documents (all block kinds, run formats, list levels). Round trip model → FlowDocument → model. | All equal original. |
 | TC-EDT-14 | FR-EDT-11 | I | Save and reload through the encrypted repository a document with every feature. | Loaded document equals saved document. |
 | TC-EDT-16 | FR-EDT-10 | A | Open a day in the real main window without clicking in the text. | Font box shows "Segoe UI" and size box "11". |
+| TC-EDT-17 | FR-EDT-13 | A | Through the editor's Copy command and pasting handler (data captured, the Windows clipboard untouched): copy and paste plain text, bold/italic/underline, strikethrough, font, size, colour and highlight, a line break, Heading 1 and 2, a centred paragraph, bulleted and nested lists, a checklist (unticked, ticked, indented), an image with caption and size, and a file, each between two paragraphs. Also: part of one paragraph; a selection from the middle of one paragraph into a checklist item; a whole heading on its own; cut and paste of an image; paste over a selection, then undo; a drop; the plain text for other apps. | Every pasted document equals the original. Part of one plain paragraph is left to WPF's copy; across paragraphs only the selected text is kept, with the checklist tick. The cut image keeps its vault reference. Paste replaces the selection and one undo restores it. A drop inserts the content and lets the move finish. Plain text has "☐ " and "☑ " prefixes. Without the fix, 17 of these fail. |
 | TC-EDT-15 | FR-EDT-12 | M | Paste from Word and from a web page: bold, italic, underlined text, a bulleted list and line breaks. | Those formats kept; nothing crashes; unknown styles dropped. |
 
 ### 2.4 Images
@@ -139,14 +141,14 @@
 |---|---|---|---|---|
 | TC-CAL-01 | FR-CAL-01 | A | Unlock with clock 2026-10-15. | Calendar title "October 2026". |
 | TC-CAL-02 | FR-CAL-02 | U/A | Build grid for Oct 2026 (Sunday start), Feb 2026 (Sunday start), Feb 2026 (Monday start), Mar 2026. | 42 cells each; Oct 2026 first cell Sun Sep 27; Feb 2026 Sunday start first cell Sun Feb 1; Monday start first cell Mon Jan 26; heading order matches setting. |
-| TC-CAL-03 | FR-CAL-03 | A | Entries on Oct 5, 8, 13. Refresh. | `HasEntry` true only for those three cells. |
+| TC-CAL-03 | FR-CAL-03 | A | Entries on Oct 5, 8, 13. Refresh. | `HasEntry` true only for those three cells. (Mood tints: TC-MOOD-03.) |
 | TC-CAL-04 | FR-CAL-04 | A | Entries on Oct 13 and Oct 20 (today Oct 15). | Oct 20 `IsFuture && HasEntry` (dashed style); Oct 13 not future. |
 | TC-CAL-05 | FR-CAL-05 | A | Oct 20 has an unticked checklist item, Oct 13 only ticked ones. | `HasOpenItems` true for Oct 20 only. |
 | TC-CAL-06 | FR-CAL-06 | A | Select Oct 20 with today Oct 15. | Oct 15 `IsToday`, Oct 20 `IsSelected`; Sep 27–30 and Nov 1–7 `IsInCurrentMonth = false`. |
 | TC-CAL-07 | FR-CAL-07 | A | Next ×3 from Oct 2026, Previous ×13, then Today. | Jan 2027; Dec 2025; then Oct 2026 with Oct 15 selected. PgUp/PgDn bindings invoke the same commands. |
 | TC-CAL-08 | FR-CAL-08 | A | Click cell Oct 8; arrow-right then Enter. | `DateSelected` raised with Oct 8, then Oct 9; entry opened. |
 | TC-CAL-09 | FR-CAL-09 | A | Type in empty Oct 22 and let autosave run; then clear it. | Oct 22 highlighted after first save; not highlighted after clearing. |
-| TC-CAL-10 | FR-CAL-01, FR-CAL-03 | M | Visual check in light theme at 100 % and 150 % scaling. | Highlights, today ring, selection and dashed future outline are clearly distinguishable. |
+| TC-CAL-10 | FR-CAL-01, FR-CAL-03, FR-MOOD-03 | M | Visual check in light theme at 100 % and 150 % scaling, with sad, neutral and happy days. | Highlights, mood tints and small faces, today ring, selection and dashed future outline are clearly distinguishable. |
 
 ### 2.8 Search
 
@@ -174,16 +176,17 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
-| TC-INSP-01 | FR-INSP-01, FR-INSP-02 | A | Open Oct 15 with defaults. | Verse text, reference and "WEB" shown; quote text and author shown. |
+| TC-INSP-01 | FR-INSP-01, FR-INSP-02, FR-INSP-17 | A | Open Oct 15 with defaults. Show a philosophy quote, a literature quote and a quote whose category is "Science". | Verse text, reference and "WEB" shown; quote text and author shown. The card label reads "PHILOSOPHY", "LITERATURE" and "SCIENCE" respectively. |
 | TC-INSP-02 | FR-INSP-03 | I | Load embedded verse list. | ≥ 366 items; all distinct references; all `Translation = "WEB"`; no empty text; references parse as Book Chapter:Verse(-Verse). |
 | TC-INSP-03 | FR-INSP-04 | I | Load embedded quote list. | ≥ 366 distinct texts; ≥ 20 distinct authors; every item has a tradition. |
+| TC-INSP-16 | FR-INSP-16 | I | Load embedded quote list and take the Literature quotes. | Categories are exactly Literature and Philosophy; 394 philosophy quotes; ≥ 366 distinct literature texts, none also a philosophy quote; ≥ 30 authors; ≥ 8 traditions including "Latin American" and "African"; every literature quote has a work; both categories appear among the first 366 quotes (used by day-of-year mode). |
 | TC-INSP-04 | FR-INSP-05 | A | Turn verse off; turn quote off. | Verse panel hidden; then quote panel hidden; layout has no empty gap. |
-| TC-INSP-05 | FR-INSP-06 | U | Filter verses to Psalms; quotes to Stoic. Filter to a book with no items. | Every selected verse from Psalms; every quote Stoic. Empty filter: falls back to full list and returns a warning. |
+| TC-INSP-05 | FR-INSP-06, FR-INSP-17 | U/A | Filter verses to Psalms; quotes to Stoic. Filter to a book with no items. Turn off Literature, then Philosophy, then both. Add a "Science" quote to the content only. Load a stored quote saved without a category. In Settings, untick a category, tick traditions, save and reopen; open settings saved with a bare tradition. Tick Chinese under Philosophy only. Open the real Settings window. | Every selected verse from Psalms; every quote Stoic. Empty filter: falls back to full list and returns a warning. Category filters give only the ticked category; all off falls back with a warning; with defaults both categories appear. Science is listed with its tradition and can be shown with no code change. The stored quote reads as Philosophy. Settings show one section per category, Philosophy first, each with its own traditions alphabetically and every category ticked; choices save as "Category/Tradition" and reopen that way; a bare tradition from older settings shows ticked in each category that has it. With Philosophy › Chinese ticked, the only philosophy quotes are Chinese, and all literature quotes, Chinese or not, still appear. In the real window, Philosophy's section is above Literature's, the tradition lists run down columns alphabetically, the books run down columns in Bible order, and no tick box is cut off. |
 | TC-INSP-06 | FR-INSP-07 | U | Day-of-year mode for 2026-10-15 and 2027-10-15. Random mode for same dates and two vault ids. | Day-of-year: same item both years. Random: different between years in this sample; differs between vault ids; stable on repeat. |
 | TC-INSP-07 | FR-INSP-08 | U | Call `For(2026-10-15, settings)` 100 times. | Same verse and quote every call. |
 | TC-INSP-08 | FR-INSP-09 | U | `Shuffle` 20 times for one date. | Never returns the item currently shown. |
 | TC-INSP-09 | FR-INSP-10 | I | Save entry for Oct 15; change selection mode and filters; reopen Oct 15 and an empty Oct 16. | Oct 15 shows stored verse/quote unchanged; Oct 16 follows new settings. |
-| TC-INSP-10 | FR-INSP-11 | I | Import a CSV of 10 verses (`reference,text,translation`) and JSON of 5 quotes; select them. | Sources selectable; items come from imported lists; vault file for imported lists is encrypted (no plaintext verse text on disk). |
+| TC-INSP-10 | FR-INSP-11 | I | Import a CSV of 10 verses (`reference,text,translation`) and JSON of 5 quotes; select them. Import quotes with and without a `category` column. | Sources selectable; items come from imported lists; vault file for imported lists is encrypted (no plaintext verse text on disk). A quote's category comes from the file, or is "Quote" when the file has none. |
 | TC-INSP-13 | FR-INSP-13 | I/U | Check every built-in verse; open a saved day whose stored verse is 1 Corinthians 13:7 only. | Every verse starts with a capital letter and ends with sentence punctuation; the saved day shows 1 Corinthians 13:4-7. |
 | TC-INSP-14 | FR-INSP-14 | A | Copy verse, copy quote, copy both; then copy while the clipboard is busy. | Clipboard holds the text plus "— reference (WEB)" / "— author, work, source"; status says what was copied; busy clipboard shows "Couldn't copy". |
 | TC-INSP-15 | FR-INSP-15 | A | Open the real main window at 1240×820 with the longest verse (Ecclesiastes 3:1-8) and quote. | Card ≤ 230 px tall; the verse text area scrolls; Copy verse button visible. |
@@ -206,7 +209,18 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | TC-UI-01 | FR-UI-01 | A | Read the app's icon resource; create the main, unlock, setup and settings windows. | Icon contains 16, 24, 32, 48, 64 and 256 px images; every window's Icon is set; main, unlock and setup windows show the quill logo. |
 | TC-UI-02 | FR-UI-01 | M | Run the app at 100 % and 200 % display scaling; look at the taskbar, Alt+Tab, title bars, Explorer and the Start menu. | The quill shows everywhere, sharp at both scalings. |
 
-### 2.12 Non-functional
+### 2.12 Day mood
+
+| ID | Req | Lvl | Steps / input | Expected result |
+|---|---|---|---|---|
+| TC-MOOD-01 | FR-MOOD-01 | U/A | Set Happy on an empty day, change to Sad, then clear it. Try a mood on a day after today, in the service and with the face buttons. | Each change is stored and reloads; clearing an otherwise empty day removes it. The service refuses a mood for a future day; on a future day the faces are disabled, the hint says a mood can be chosen once the day arrives, and clicking does nothing. |
+| TC-MOOD-02 | FR-MOOD-02 | U/I | Save a day with a mood and one without; read a catalog entry written before moods; save a mood in a real vault. | The entry JSON has `"mood":"neutral"`; a day without a mood writes no mood field; the old catalog entry reads as no mood; the catalog round-trips the mood. In the real vault neither "mood" nor "happy" appears in plaintext, and the mood reloads. |
+| TC-MOOD-03 | FR-MOOD-03 | A | Give three earlier days sad, neutral and happy; leave a fourth without; reopen a day. | Calendar cells carry Sad, Neutral, Happy and None; the days with a mood count as entries; the reopened day's face is selected; the screen-reader name ends with e.g. ", happy day". |
+| TC-MOOD-04 | FR-MOOD-04 | U | With today 2026-10-15: moods on today, 29 and 30 days back, 2025-10-16 and 2025-10-15, plus a day with text only. | Last 30 days: 1 sad, 0 neutral, 1 happy. Last 12 months: 1 sad, 1 neutral, 2 happy (2025-10-15 and the text-only day aren't counted). |
+| TC-MOOD-05 | FR-MOOD-05 | A | Click Happy, then Sad, then Sad again. | Each click saves at once (no autosave wait); the calendar cell and both counts follow each click; after the last click the day has no mood and, being empty, is removed. |
+| TC-MOOD-06 | FR-MOOD-01, FR-MOOD-03, FR-MOOD-04 | A/M | Open the real main window at its smallest size (1000×650) and choose a mood. Then look at it in light theme at 100 % and 150 % scaling. | The three faces are visible to the right of the heading without overlapping it; the counts card shows six counts with the happy day counted. Faces, tints and counts are easy to read. |
+
+### 2.13 Non-functional
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
@@ -237,7 +251,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 ## 3. Traceability matrix
 
-137 requirements, 152 test cases. Every requirement is covered by at least one test.
+146 requirements, 161 test cases. Every requirement is covered by at least one test.
 
 | Requirement | Pri | Test cases |
 |---|---|---|
@@ -261,6 +275,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-SEC-18 | M | TC-SEC-18 (I) |
 | FR-SEC-20 | M | TC-SEC-22 (A/I) |
 | FR-SEC-19 | S | TC-SEC-19 (M) |
+| FR-SEC-21 | M | TC-SEC-26 (A/M) |
 | FR-ENT-01 | M | TC-ENT-01 (I) |
 | FR-ENT-02 | M | TC-ENT-02 (A) |
 | FR-ENT-03 | M | TC-ENT-03 (A) |
@@ -282,6 +297,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-EDT-10 | S | TC-EDT-12 (A), TC-EDT-16 (A) |
 | FR-EDT-11 | M | TC-EDT-02 (A), TC-EDT-04 (A), TC-EDT-06 (A), TC-EDT-07 (A), TC-EDT-08 (A), TC-EDT-10 (A), TC-EDT-13 (A), TC-EDT-14 (I), TC-IMG-04 (A), TC-ATT-02 (A) |
 | FR-EDT-12 | S | TC-EDT-15 (M) |
+| FR-EDT-13 | M | TC-EDT-01 (M), TC-EDT-17 (A) |
 | FR-IMG-01 | M | TC-IMG-01 (A) |
 | FR-IMG-02 | M | TC-IMG-02 (I) |
 | FR-IMG-03 | M | TC-IMG-03 (A), TC-IMG-04 (A) |
@@ -338,7 +354,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-INSP-03 | M | TC-INSP-02 (I) |
 | FR-INSP-04 | M | TC-INSP-03 (I) |
 | FR-INSP-05 | M | TC-INSP-04 (A) |
-| FR-INSP-06 | S | TC-INSP-05 (U) |
+| FR-INSP-06 | S | TC-INSP-05 (U/A) |
 | FR-INSP-07 | M | TC-INSP-06 (U) |
 | FR-INSP-08 | M | TC-INSP-07 (U) |
 | FR-INSP-09 | S | TC-INSP-08 (U) |
@@ -348,12 +364,19 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-INSP-13 | M | TC-INSP-13 (I/U) |
 | FR-INSP-15 | M | TC-INSP-15 (A) |
 | FR-INSP-14 | M | TC-INSP-14 (A) |
+| FR-INSP-16 | M | TC-INSP-16 (I) |
+| FR-INSP-17 | M | TC-INSP-01 (A), TC-INSP-05 (U/A) |
 | FR-SET-01 | M | TC-SET-01 (A) |
 | FR-SET-02 | M | TC-SET-02 (I) |
 | FR-SET-03 | S | TC-SET-03 (I) |
 | FR-SET-04 | S | TC-SET-04 (I) |
 | FR-SET-05 | S | TC-SET-05 (I) |
 | FR-UI-01 | S | TC-UI-01 (A), TC-UI-02 (M) |
+| FR-MOOD-01 | M | TC-MOOD-01 (U/A), TC-MOOD-06 (A/M) |
+| FR-MOOD-02 | M | TC-MOOD-02 (U/I) |
+| FR-MOOD-03 | M | TC-CAL-10 (M), TC-MOOD-03 (A), TC-MOOD-06 (A/M) |
+| FR-MOOD-04 | M | TC-MOOD-04 (U), TC-MOOD-06 (A/M) |
+| FR-MOOD-05 | M | TC-MOOD-05 (A) |
 | NFR-SEC-01 | M | TC-NFR-01 (I), TC-NFR-02 (I) |
 | NFR-SEC-02 | M | TC-NFR-03 (I) |
 | NFR-SEC-03 | M | TC-NFR-04 (I), TC-NFR-05 (I) |

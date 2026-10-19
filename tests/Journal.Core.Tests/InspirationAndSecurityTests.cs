@@ -14,16 +14,100 @@ public class InspirationTests
     public void Filters()
     {
         var svc = TestData.Inspiration();
-        var s = new InspirationSettings { VerseBooks = new HashSet<string> { "Psalms" }, Traditions = new HashSet<string> { "Stoic" } };
-        for (int d = 0; d < 30; d++)
+        var s = new InspirationSettings { VerseBooks = new HashSet<string> { "Psalms" }, Traditions = new HashSet<string> { "Philosophy/Stoic" } };
+        var categories = new HashSet<string>();
+        for (int d = 0; d < 60; d++)
         {
             var r = svc.For(TestData.Today.AddDays(d), s, Vault);
             Assert.Equal("Psalms", r.Inspiration.Verse!.Book);
-            Assert.Equal("Stoic", r.Inspiration.Quote!.Tradition);
+            var q = r.Inspiration.Quote!;
+            categories.Add(q.Category);
+            // The Stoic choice narrows Philosophy only; Literature, with nothing ticked, keeps all its quotes (ISS-015).
+            if (q.Category == QuoteCategories.Philosophy) Assert.Equal("Stoic", q.Tradition);
         }
+        Assert.Equal(2, categories.Count);
         var none = svc.For(TestData.Today, s with { VerseBooks = new HashSet<string> { "Obadiah" } }, Vault);
         Assert.NotNull(none.Inspiration.Verse);
         Assert.Single(none.Warnings);
+    }
+
+    [Fact(DisplayName = "TC-INSP-05 Quote categories filter the quotes; turning all off falls back with a warning")]
+    public void CategoryFilter()
+    {
+        var svc = TestData.Inspiration();
+        Assert.Equal(["Literature", "Philosophy"], svc.AvailableCategories().Select(c => c.Name));
+        Assert.Equal(["English"], svc.AvailableCategories()[0].Traditions);
+        Assert.Equal(["Greek", "Stoic"], svc.AvailableCategories()[1].Traditions);
+
+        var noLit = new InspirationSettings { HiddenCategories = new HashSet<string> { "Literature" } };
+        var noPhil = new InspirationSettings { HiddenCategories = new HashSet<string> { "philosophy" } };
+        var both = new HashSet<string>();
+        for (int d = 0; d < 60; d++)
+        {
+            var day = TestData.Today.AddDays(d);
+            Assert.Equal(QuoteCategories.Philosophy, svc.For(day, noLit, Vault).Inspiration.Quote!.Category);
+            Assert.Equal(QuoteCategories.Literature, svc.For(day, noPhil, Vault).Inspiration.Quote!.Category);
+            both.Add(svc.For(day, new InspirationSettings(), Vault).Inspiration.Quote!.Category);
+        }
+        Assert.Equal(2, both.Count);   // default: all categories on
+
+        var none = svc.For(TestData.Today, new InspirationSettings { HiddenCategories = new HashSet<string> { "Literature", "Philosophy" } }, Vault);
+        Assert.NotNull(none.Inspiration.Quote);
+        Assert.Single(none.Warnings);
+    }
+
+    [Fact(DisplayName = "TC-INSP-05 A tradition ticked under one category doesn't pick that tradition in another (ISS-015)")]
+    public void TraditionsBelongToTheirCategory()
+    {
+        var quotes = new List<Quote>
+        {
+            new("The Way that can be told is not the eternal Way.", "Lao Tzu", null, "Chinese"),
+            new("Virtue is not left to stand alone.", "Confucius", null, "Chinese"),
+            new("Man is the measure of all things.", "Protagoras", null, "Greek"),
+            new("We cannot keep the gold of yesterday.", "Li Po", null, "Chinese") { Category = QuoteCategories.Literature },
+            new("All the world's a stage.", "William Shakespeare", null, "English") { Category = QuoteCategories.Literature },
+        };
+        var svc = new DailyInspirationService([], [new ListQuoteSource(SourceNames.BuiltIn, () => quotes)]);
+        IReadOnlyList<Quote> Shown(params string[] traditions)
+        {
+            var s = new InspirationSettings { ShowVerse = false, Traditions = traditions.ToHashSet(), Mode = SelectionMode.RandomPerDay };
+            return Enumerable.Range(0, 200).Select(d => svc.For(TestData.Today.AddDays(d), s, Vault).Inspiration.Quote!).Distinct().ToList();
+        }
+
+        // Philosophy › Chinese: Chinese philosophy only from Philosophy; all of Literature, which has nothing ticked.
+        var philosophyChinese = Shown(TraditionChoice.Make("Philosophy", "Chinese"));
+        Assert.DoesNotContain(philosophyChinese, q => q.Author == "Protagoras");
+        Assert.Contains(philosophyChinese, q => q.Author == "Li Po");
+        Assert.Contains(philosophyChinese, q => q.Author == "William Shakespeare");
+
+        // Literature › English only: Li Po is out; Philosophy keeps everything.
+        var literatureEnglish = Shown(TraditionChoice.Make("Literature", "English"));
+        Assert.DoesNotContain(literatureEnglish, q => q.Author == "Li Po");
+        Assert.Contains(literatureEnglish, q => q.Author == "Protagoras");
+
+        // Settings saved before ISS-015 ("Chinese" with no category) apply to every category that has it.
+        var legacy = Shown("Chinese");
+        Assert.All(legacy, q => Assert.Equal("Chinese", q.Tradition));
+        Assert.Contains(legacy, q => q.Author == "Li Po");
+        Assert.Contains(legacy, q => q.Author == "Confucius");
+    }
+
+    [Fact(DisplayName = "TC-INSP-05 A category that exists only in the content needs no code change")]
+    public void FutureCategory()
+    {
+        var quotes = TestData.Quotes().Append(new Quote("Nothing in life is to be feared.", "Marie Curie", null, "French") { Category = "Science" }).ToList();
+        var svc = new DailyInspirationService([], [new ListQuoteSource(SourceNames.BuiltIn, () => quotes)]);
+        Assert.Contains(svc.AvailableCategories(), c => c.Name == "Science" && c.Traditions.SequenceEqual(["French"]));
+        var onlyScience = new InspirationSettings { ShowVerse = false, HiddenCategories = new HashSet<string> { "Literature", "Philosophy" } };
+        Assert.Equal("Marie Curie", svc.For(TestData.Today, onlyScience, Vault).Inspiration.Quote!.Author);
+    }
+
+    [Fact(DisplayName = "TC-INSP-05 Days saved before categories existed keep a philosophy label")]
+    public void StoredQuoteWithoutCategory()
+    {
+        var json = "{\"text\":\"Know thyself\",\"author\":\"Socrates\",\"work\":null,\"tradition\":\"Greek\"}";
+        var q = System.Text.Json.JsonSerializer.Deserialize<Quote>(json, Journal.Core.Persistence.JournalJson.Options)!;
+        Assert.Equal(QuoteCategories.Philosophy, q.Category);
     }
 
     [Fact(DisplayName = "TC-INSP-06 Day-of-year repeats yearly; random differs by year and vault but is stable")]
@@ -86,6 +170,9 @@ public class InspirationTests
         var quotes = ListImporter.ImportQuotes(json, "q.json");
         Assert.Single(quotes.Items);
         Assert.Equal(1, quotes.Skipped);
+        Assert.Equal(QuoteCategories.Imported, quotes.Items[0].Category);
+        var withCategory = ListImporter.ImportQuotes("text,author,work,tradition,category\nAll that glisters,Shakespeare,,English,Literature\n", "q.csv");
+        Assert.Equal(QuoteCategories.Literature, withCategory.Items[0].Category);
 
         Assert.Throws<ImportException>(() => ListImporter.ImportVerses("reference,text\n,\n", "bad.csv"));
     }

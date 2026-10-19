@@ -19,6 +19,8 @@ public sealed partial class InspirationViewModel(IClipboardService? clipboard = 
     [ObservableProperty] private string _verseReference = "";
     [ObservableProperty] private string _quoteText = "";
     [ObservableProperty] private string _quoteAuthor = "";
+    /// <summary>Card label: the quote's category, e.g. PHILOSOPHY or LITERATURE (FR-INSP-17).</summary>
+    [ObservableProperty] private string _quoteLabel = "";
     [ObservableProperty] private bool _hasVerse;
     [ObservableProperty] private bool _hasQuote;
 
@@ -37,6 +39,7 @@ public sealed partial class InspirationViewModel(IClipboardService? clipboard = 
             : "";
         HasQuote = inspiration.Quote is not null;
         QuoteText = inspiration.Quote?.Text ?? "";
+        QuoteLabel = inspiration.Quote?.Category.ToUpperInvariant() ?? "";
         QuoteAuthor = inspiration.Quote is { } q ? (q.Work is null ? $"— {q.Author}" : $"— {q.Author}, {q.Work}") : "";
         OnPropertyChanged(nameof(HasAny));
     }
@@ -256,6 +259,14 @@ public sealed partial class EntryTabViewModel : ObservableObject
 }
 
 /// <summary>The open day: tabs, tags, verse and quote, autosave (FR-ENT-*, FR-TAB-*, FR-TAG-*).</summary>
+/// <summary>One of the three face buttons on the day's heading (FR-MOOD-01).</summary>
+public sealed partial class MoodChoiceViewModel(Mood mood) : ObservableObject
+{
+    public Mood Mood { get; } = mood;
+    public string Label => $"{Mood} day";
+    [ObservableProperty] private bool _isSelected;
+}
+
 public sealed partial class EntryViewModel : ObservableObject
 {
     private readonly JournalContext _ctx;
@@ -280,6 +291,18 @@ public sealed partial class EntryViewModel : ObservableObject
 
     public bool IsFuture => Date > _ctx.Clock.Today;
 
+    /// <summary>Sad, neutral and happy, for the face buttons (FR-MOOD-01).</summary>
+    public IReadOnlyList<MoodChoiceViewModel> MoodChoices { get; } = [new(Mood.Sad), new(Mood.Neutral), new(Mood.Happy)];
+
+    /// <summary>Future days can't have a mood (owner, ISS-013).</summary>
+    public bool CanSetMood => Entry is not null && !IsReadOnly && !IsFuture;
+
+    public string MoodHint => IsFuture
+        ? "You can choose a mood for this day once it arrives."
+        : "How was this day? Click a face; click it again to clear it.";
+
+    public Mood Mood => Entry?.Mood ?? Mood.None;
+
     public EntryViewModel(JournalContext ctx, DateOnly date, EntryLoadResult load)
     {
         _ctx = ctx;
@@ -299,6 +322,27 @@ public sealed partial class EntryViewModel : ObservableObject
         }
         SelectedTab = Tabs.FirstOrDefault();
         RefreshTags();
+        RefreshMood();
+    }
+
+    private void RefreshMood()
+    {
+        foreach (var c in MoodChoices) c.IsSelected = c.Mood == Mood;
+        OnPropertyChanged(nameof(Mood));
+    }
+
+    /// <summary>
+    /// Sets the day's mood, or clears it when the chosen face is clicked again, and saves straight away so the
+    /// calendar and the counts update at once (FR-MOOD-01, FR-MOOD-05).
+    /// </summary>
+    [RelayCommand]
+    private async Task ChooseMood(MoodChoiceViewModel? choice)
+    {
+        if (choice is null || !CanSetMood) return;
+        Entry!.SetMood(Mood == choice.Mood ? Mood.None : choice.Mood, _ctx.Clock.Today);
+        RefreshMood();
+        IsDirty = true;
+        await SaveAsync();
     }
 
     public void MarkDirty()

@@ -39,6 +39,7 @@
 | FR-SEC-18 | Settings shall allow, while unlocked: regenerating the recovery code (the old one stops working), re-enrolling Windows Hello, and removing the Hello slot of another PC. | M |
 | FR-SEC-20 | The app shall never leave a Windows Hello request waiting that the user can't see: tests and tools shall not start the app; closing the unlock or setup window, exiting, or starting a recovery-code unlock shall cancel a waiting request; and the recovery code shall work while a request is waiting. (Windows doesn't let an app close the dialog itself; see ISS-007.) | M |
 | FR-SEC-19 | Only one instance of the app shall run; launching again shall bring the existing window to the front. | S |
+| FR-SEC-21 | Closing the main window shall, in one click, save the open day, lock the vault, delete temporary files and end the app's process, whether or not anything needed saving. If saving or locking fails, the app shall say so and still exit (ISS-016). | M |
 
 ### 2.2 Entries and days (ENT)
 
@@ -70,6 +71,7 @@
 | FR-EDT-10 | Toolbar controls shall reflect the formatting at the caret or selection. | S |
 | FR-EDT-11 | All formatting, lists, checklist states, images, captions and attachments shall be preserved exactly after saving and reopening. | M |
 | FR-EDT-12 | Pasting text from other applications shall keep bold, italic, underline, lists and line breaks; other formatting may be dropped. | S |
+| FR-EDT-13 | Copy, cut, paste and drag-and-drop within the journal shall keep everything the editor holds: text formatting, headings, lists, checklist items with their ticks and indents, images with captions and sizes, and attached files. Pasted images and files refer to the same encrypted file in the vault, so cutting and pasting never deletes them. Pasting is one undo step. Text copied to other applications shows checklist items as "☐ item" or "☑ item" (ISS-010). | M |
 
 ### 2.4 Images (IMG)
 
@@ -120,7 +122,7 @@
 |---|---|---|
 | FR-CAL-01 | The main window shall display a month calendar showing the current month on startup. | M |
 | FR-CAL-02 | The calendar shall show a 6×7 grid with weekday headings, starting on Sunday (setting: Sunday or Monday). | M |
-| FR-CAL-03 | Days that have a journal entry shall be highlighted. | M |
+| FR-CAL-03 | Days that have a journal entry shall be highlighted. A day with a mood shows its mood tint instead (FR-MOOD-03). | M |
 | FR-CAL-04 | Future days that have an entry shall additionally show a dashed outline. | S |
 | FR-CAL-05 | Days with unticked checklist items shall show a small dot. | S |
 | FR-CAL-06 | Today shall be marked distinctly from the selected day; days outside the displayed month shall be muted. | M |
@@ -152,11 +154,11 @@
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-INSP-01 | Each day's page shall display a Bible verse with its reference and translation abbreviation. | M |
-| FR-INSP-02 | Each day's page shall display a philosophy quote with its author (and work, if known). | M |
+| FR-INSP-02 | Each day's page shall display a quote (philosophy or literature) with its author (and work, if known). The quote card's label shall show the quote's category, e.g. "PHILOSOPHY" or "LITERATURE" (ISS-011). | M |
 | FR-INSP-03 | The built-in verse list shall be from the World English Bible and contain at least 366 distinct verses. | M |
-| FR-INSP-04 | The built-in quote list shall contain at least 366 distinct public-domain quotes from at least 20 authors, each labeled with a tradition. | M |
+| FR-INSP-04 | The built-in philosophy quotes shall be at least 366 distinct public-domain quotes from at least 20 authors, each labeled with a tradition. | M |
 | FR-INSP-05 | Settings shall allow turning the verse and the quote on or off independently. | M |
-| FR-INSP-06 | Settings shall allow filtering verses by book and quotes by tradition; if a filter leaves nothing, the app shall say so and use the unfiltered list. | S |
+| FR-INSP-06 | Settings shall allow filtering verses by book and quotes by category and tradition. Each quote category has its own section, Philosophy first and then the others alphabetically, with a tick box (all ticked by default) and its own tradition list; a tradition ticked in one category doesn't affect another category, and a category with no tradition ticked keeps all its quotes (ISS-011, ISS-015). The tick-box lists run down columns: traditions alphabetically, books in Bible order (ISS-015). If a filter leaves nothing, the app shall say so and use the unfiltered list. | S |
 | FR-INSP-07 | Settings shall offer two selection modes: *by day of year* (same date each year gets the same item) and *random per day* (stable for a given date and vault). | M |
 | FR-INSP-08 | The same date shall always show the same verse and quote for unchanged settings. | M |
 | FR-INSP-09 | A *Shuffle* button shall pick a different verse and quote for the displayed day. | S |
@@ -166,6 +168,8 @@
 | FR-INSP-13 | Every built-in verse shall be a complete passage that starts and ends a sentence (multi-verse ranges where needed). A saved day whose stored verse is only part of a sentence shall show the full passage. | M |
 | FR-INSP-15 | The verse and quote card shall not crowd out the editor: each text area shows at most about seven lines (five when the window is shorter than 760 px) and scrolls beyond that, while the reference, author and Copy buttons stay visible. | M |
 | FR-INSP-14 | The verse and quote text shall be selectable, and Copy buttons shall copy the verse (with reference and translation), the quote (with author, work and source edition), or both, for pasting into other documents. | M |
+| FR-INSP-16 | The built-in literature quotes shall be at least 366 distinct public-domain quotes from at least 30 authors across at least 8 languages or regions, including Latin America and Africa, each with author, work, tradition and source edition, and none repeating a philosophy quote (ISS-011). | M |
+| FR-INSP-17 | Quote categories shall be defined by the content, not the code: each quote names its category, and the card label, the Settings tick boxes and the filters list whatever categories the content has. A category added only in the content shall work with no code change. Days saved before categories existed show their quote as Philosophy; imported quotes without a category show as "Quote" (ISS-011). | M |
 
 ### 2.10 Settings and backup (SET)
 
@@ -182,6 +186,18 @@
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-UI-01 | The app shall have a quill logo, used as the program icon (Explorer, Start menu, shortcuts), as the title-bar, taskbar and Alt+Tab icon of every window, and shown in the main window's top bar and at the top of the unlock and setup windows. | S |
+
+### 2.12 Day mood (MOOD)
+
+Added by ISS-013 (owner, 2026-10-19).
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-MOOD-01 | Each day up to and including today can have one mood, sad, neutral or happy, or none. The user sets it with three face buttons on the day's heading and clears it by clicking the chosen face again. Future days can't be given a mood. | M |
+| FR-MOOD-02 | The mood is saved encrypted with the day's entry and kept in the encrypted catalog. A mood alone keeps the day's entry; clearing the last content and the mood removes it. Entries and catalogs saved before moods existed read as having no mood. | M |
+| FR-MOOD-03 | Calendar days are tinted light red for sad and light green for happy; neutral and no mood keep the normal background. A mood tint replaces the entry highlight; a day with an entry and no mood keeps the entry highlight. Every day with a mood also shows a small face, so the mood doesn't depend on colour. | M |
+| FR-MOOD-04 | A section under the calendar counts sad, neutral and happy days over the last 30 days and the last 12 months, both ending today and including today. Days without a mood aren't counted. Moods aren't searchable. | M |
+| FR-MOOD-05 | Choosing or clearing a mood saves at once; the calendar tint and the counts update immediately. | M |
 
 ## 3. Non-functional requirements
 

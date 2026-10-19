@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Journal.Core.Calendar;
+using Journal.Core.Domain;
 using Journal.Core.Search;
 using Journal.Core.Services;
 
@@ -12,7 +13,8 @@ public sealed partial class DayCellViewModel(DateOnly date) : ObservableObject
 {
     public DateOnly Date { get; } = date;
     public int DayNumber => Date.Day;
-    public string AutomationName => Date.ToString("D", CultureInfo.CurrentCulture) + (HasEntry ? ", has an entry" : "");
+    public string AutomationName => Date.ToString("D", CultureInfo.CurrentCulture) + (HasEntry ? ", has an entry" : "") +
+                                    (Mood == Mood.None ? "" : $", {Mood.ToString().ToLowerInvariant()} day");
 
     [ObservableProperty] private bool _isInCurrentMonth;
     [ObservableProperty] private bool _isToday;
@@ -20,8 +22,12 @@ public sealed partial class DayCellViewModel(DateOnly date) : ObservableObject
     [ObservableProperty] private bool _isFuture;
     [ObservableProperty] private bool _hasOpenItems;
     [ObservableProperty] private bool _isSelected;
+    /// <summary>The day's mood: tints the day red or green and shows a small face (FR-MOOD-03).</summary>
+    [ObservableProperty] private Mood _mood;
 
     public bool IsPlanned => IsFuture && HasEntry;
+
+    partial void OnMoodChanged(Mood value) => OnPropertyChanged(nameof(AutomationName));
 
     partial void OnHasEntryChanged(bool value) { OnPropertyChanged(nameof(IsPlanned)); OnPropertyChanged(nameof(AutomationName)); }
     partial void OnIsFutureChanged(bool value) => OnPropertyChanged(nameof(IsPlanned));
@@ -32,6 +38,7 @@ public sealed partial class CalendarViewModel : ObservableObject
 {
     private readonly IClock _clock;
     private readonly Func<DateOnly, DateOnly, (ISet<DateOnly> Entries, ISet<DateOnly> Open)> _dates;
+    private readonly Func<DateOnly, DateOnly, IReadOnlyDictionary<DateOnly, Mood>> _moods;
 
     [ObservableProperty] private int _year;
     [ObservableProperty] private int _month;
@@ -45,10 +52,12 @@ public sealed partial class CalendarViewModel : ObservableObject
     /// <summary>Raised when the user opens a day (click or Enter).</summary>
     public event EventHandler<DateOnly>? DateSelected;
 
-    public CalendarViewModel(IClock clock, Func<DateOnly, DateOnly, (ISet<DateOnly>, ISet<DateOnly>)> dates, DayOfWeek weekStart)
+    public CalendarViewModel(IClock clock, Func<DateOnly, DateOnly, (ISet<DateOnly>, ISet<DateOnly>)> dates, DayOfWeek weekStart,
+        Func<DateOnly, DateOnly, IReadOnlyDictionary<DateOnly, Mood>>? moods = null)
     {
         _clock = clock;
         _dates = dates;
+        _moods = moods ?? ((_, _) => new Dictionary<DateOnly, Mood>());
         _weekStart = weekStart;
         var today = clock.Today;
         _selectedDate = today;
@@ -76,6 +85,7 @@ public sealed partial class CalendarViewModel : ObservableObject
         if (Year == 0) return;
         var grid = MonthGrid.Build(Year, Month, WeekStart);
         var (entries, open) = _dates(grid[0], grid[^1]);
+        var moods = _moods(grid[0], grid[^1]);
         var today = _clock.Today;
         WeekdayNames.Clear();
         foreach (var dow in MonthGrid.WeekdayOrder(WeekStart))
@@ -91,6 +101,7 @@ public sealed partial class CalendarViewModel : ObservableObject
                 IsFuture = date > today,
                 HasOpenItems = open.Contains(date),
                 IsSelected = date == SelectedDate,
+                Mood = moods.GetValueOrDefault(date),
             });
         }
     }
@@ -275,6 +286,19 @@ public sealed partial class SearchViewModel : ObservableObject
     }
 }
 
+/// <summary>Counts of sad, neutral and happy days, shown under the calendar (FR-MOOD-04).</summary>
+public sealed partial class MoodSummaryViewModel : ObservableObject
+{
+    [ObservableProperty] private MoodCounts _last30Days = new(0, 0, 0);
+    [ObservableProperty] private MoodCounts _last12Months = new(0, 0, 0);
+
+    public void Update(MoodSummary summary)
+    {
+        Last30Days = summary.Last30Days;
+        Last12Months = summary.Last12Months;
+    }
+}
+
 /// <summary>The main window: calendar, search and the open day.</summary>
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -282,6 +306,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public CalendarViewModel Calendar { get; }
     public SearchViewModel Search { get; }
+    public MoodSummaryViewModel Moods { get; } = new();
 
     [ObservableProperty] private EntryViewModel? _currentEntry;
     [ObservableProperty] private string _statusText = "";
@@ -295,7 +320,8 @@ public sealed partial class MainViewModel : ObservableObject
         _ctx = ctx;
         Calendar = new CalendarViewModel(ctx.Clock,
             (from, to) => (ctx.Journal.EntryDates(from, to), ctx.Journal.OpenItemDates(from, to)),
-            ctx.Settings().WeekStart);
+            ctx.Settings().WeekStart,
+            ctx.Journal.Moods);
         Search = new SearchViewModel(() => ctx.Journal.Search, ctx.Journal.AllTags, ctx.Scheduler);
         Calendar.DateSelected += async (_, d) => await SelectDateAsync(d);
         Search.ResultOpened += async (_, hit) => await SelectDateAsync(hit.Date, hit.TabId);
@@ -303,7 +329,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Calendar.Refresh();
             Search.RefreshIfActive();
+            Moods.Update(ctx.Journal.GetMoodSummary());
         };
+        Moods.Update(ctx.Journal.GetMoodSummary());
     }
 
     public Task InitializeAsync() => SelectDateAsync(_ctx.Clock.Today);

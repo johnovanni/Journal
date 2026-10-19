@@ -179,6 +179,7 @@ public class EntryViewModelTests
         Assert.True(entry.Inspiration.HasVerse);
         Assert.EndsWith("· WEB", entry.Inspiration.VerseReference);
         Assert.StartsWith("— ", entry.Inspiration.QuoteAuthor);
+        Assert.Contains(entry.Inspiration.QuoteLabel, new[] { "PHILOSOPHY", "LITERATURE" });
         h.Settings.Inspiration.ShowVerse = false;
         await entry.RefreshInspirationAsync();
         Assert.False(entry.Inspiration.HasVerse);
@@ -213,6 +214,18 @@ public class CopyInspirationTests
         entry.Inspiration.CopyVerseCommand.Execute(null);
         Assert.StartsWith("Couldn't copy", main.StatusText);
     });
+
+    [Fact(DisplayName = "TC-INSP-01 The quote card label follows the quote's category")]
+    public void QuoteLabel()
+    {
+        var vm = new InspirationViewModel();
+        vm.Update(new DailyInspiration(null, new Quote("Know thyself", "Socrates", null, "Greek")));
+        Assert.Equal("PHILOSOPHY", vm.QuoteLabel);
+        vm.Update(new DailyInspiration(null, new Quote("What's in a name?", "William Shakespeare", "Romeo and Juliet", "English") { Category = "Literature" }));
+        Assert.Equal("LITERATURE", vm.QuoteLabel);
+        vm.Update(new DailyInspiration(null, new Quote("Nothing in life is to be feared.", "Marie Curie", null, "French") { Category = "Science" }));
+        Assert.Equal("SCIENCE", vm.QuoteLabel);
+    }
 
     [Fact(DisplayName = "TC-INSP-14 Copied quotes include the source edition when known")]
     public void QuoteCitation()
@@ -537,13 +550,48 @@ public class SecurityViewModelTests
         Assert.Single(dialogs.ShownCodes);
     });
 
+    [Fact(DisplayName = "TC-INSP-05 Settings show a section per category, Philosophy first, each with its own traditions")]
+    public void SettingsCategories() => Sta.Run(async () =>
+    {
+        var (session, _, _, _) = NewSession();
+        await session.CreateVaultAsync(useHello: true);
+        var host = new FakeSettingsHost(session)
+        {
+            QuoteCategories = [new("Literature", ["English", "Persian"]), new("Philosophy", ["Greek", "Stoic"]), new("Science", ["French"])],
+        };
+        // Settings saved before ISS-015: a bare "Stoic" and literature turned off.
+        var saved = new AppSettings();
+        saved.Inspiration.Traditions = ["Stoic"];
+        var vm = new SettingsViewModel(host, new FakeDialogs(), saved);
+        Assert.Equal(["Philosophy", "Literature", "Science"], vm.CategorySections.Select(c => c.Name));
+        Assert.Equal("PHILOSOPHY", vm.CategorySections[0].Heading);
+        Assert.Equal("Include philosophy quotes", vm.CategorySections[0].IncludeLabel);
+        Assert.All(vm.CategorySections, c => Assert.True(c.IsIncluded));
+        Assert.Equal(["Greek", "Stoic"], vm.CategorySections[0].Traditions.Select(t => t.Name));
+        Assert.Equal(["English", "Persian"], vm.CategorySections[1].Traditions.Select(t => t.Name));
+        Assert.True(vm.CategorySections[0].Traditions.Single(t => t.Name == "Stoic").IsChecked);
+
+        vm.CategorySections[1].Traditions.Single(t => t.Name == "Persian").IsChecked = true;
+        vm.CategorySections[2].IsIncluded = false;
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(["Science"], host.Applied!.Inspiration.HiddenCategories);
+        Assert.Equal(["Philosophy/Stoic", "Literature/Persian"], host.Applied.Inspiration.Traditions);
+
+        // Reopening keeps the choices.
+        var again = new SettingsViewModel(host, new FakeDialogs(), host.Applied);
+        Assert.False(again.CategorySections[2].IsIncluded);
+        Assert.True(again.CategorySections[1].Traditions.Single(t => t.Name == "Persian").IsChecked);
+        Assert.False(again.CategorySections[1].Traditions.Single(t => t.Name == "English").IsChecked);
+    });
+
     private sealed class FakeSettingsHost(VaultSession session) : ISettingsHost
     {
         public AppSettings? Applied { get; private set; }
         public VaultSession Session => session;
         public string VaultFolder => @"C:\vault";
         public IReadOnlyList<string> AvailableBooks => ["Psalms", "Proverbs"];
-        public IReadOnlyList<string> AvailableTraditions => ["Stoic", "Greek"];
+        public IReadOnlyList<Journal.Core.Inspiration.QuoteCategory> QuoteCategories { get; init; } =
+            [new("Literature", ["English", "Persian"]), new("Philosophy", ["Greek", "Stoic"])];
         public int ImportedVerseCount => 0;
         public int ImportedQuoteCount => 0;
         public Task<string> ImportVersesAsync(string path) => Task.FromResult("Imported 1, skipped 0.");

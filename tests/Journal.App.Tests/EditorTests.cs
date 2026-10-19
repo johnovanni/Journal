@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Journal.App.Controls;
 using Journal.App.Editor;
 using Journal.Core.Documents;
@@ -126,6 +127,49 @@ public class MapperTests
         Assert.Empty(p.TextDecorations ?? []);
     });
 
+    [Fact(DisplayName = "TC-EDT-11 The strikethrough on a ticked item doesn't cross its checkbox (ISS-014)")]
+    public void StrikethroughSkipsCheckbox() => Sta.Run(() =>
+    {
+        // Two ticked items, one shown struck through and one not: the checkbox areas must render identically,
+        // and the text areas must differ (so the comparison can see the line at all).
+        var item = new ParagraphBlock(new TextRun("More new stuff")) { List = ListKind.Checklist, IsChecked = true };
+        var (struck, struckBox, struckText) = Render(item, strike: true);
+        var (plain, plainBox, _) = Render(item, strike: false);
+        Assert.Equal(struckBox, plainBox);
+        Assert.NotEqual(Pixels(struck, struckText), Pixels(plain, struckText));
+        Assert.Equal(Pixels(plain, struckBox), Pixels(struck, struckBox));
+    });
+
+    /// <summary>Renders one checklist item; returns the image, the checkbox area (with its margin) and the text area.</summary>
+    private static (BitmapSource Image, Int32Rect Checkbox, Int32Rect Text) Render(ParagraphBlock item, bool strike)
+    {
+        var box = new RichTextBox { Document = Mapper.ToFlowDocument(new JournalDocument([item])), Width = 300, Height = 60, BorderThickness = new Thickness(0) };
+        var p = (WpfParagraph)box.Document.Blocks.FirstBlock;
+        EditorOperations.ApplyCheckedDecoration(p, strike);
+        var host = new Window { Content = box, Left = -20000, SizeToContent = SizeToContent.WidthAndHeight, ShowActivated = false, ShowInTaskbar = false };
+        host.Show();
+        box.UpdateLayout();
+        var cb = FlowDocumentMapper.GetCheckBox(p)!;
+        var cbRect = cb.TransformToAncestor(box).TransformBounds(new Rect(new Point(0, 0), cb.RenderSize));
+        // The checkbox, its right margin up to the text, and a few pixels above and below.
+        var top = Math.Max(0, (int)cbRect.Top - 3);
+        var checkbox = new Int32Rect(Math.Max(0, (int)cbRect.Left), top, (int)(cbRect.Width + cb.Margin.Right) - 1, (int)cbRect.Height + 6);
+        var text = new Int32Rect(checkbox.X + checkbox.Width + 2, checkbox.Y, 60, checkbox.Height);
+        var bmp = new RenderTargetBitmap((int)box.ActualWidth, (int)box.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(box);
+        host.Close();
+        Assert.True(checkbox.Y + checkbox.Height <= bmp.PixelHeight && text.X + text.Width <= bmp.PixelWidth,
+            $"areas {checkbox} {text} outside {bmp.PixelWidth}x{bmp.PixelHeight} (checkbox at {cbRect})");
+        return (bmp, checkbox, text);
+    }
+
+    private static byte[] Pixels(BitmapSource image, Int32Rect area)
+    {
+        var bytes = new byte[area.Width * area.Height * 4];
+        image.CopyPixels(area, bytes, area.Width * 4, 0);
+        return bytes;
+    }
+
     [Fact(DisplayName = "TC-EDT-13 500 random documents survive the FlowDocument round trip")]
     public void RandomDocuments() => Sta.Run(() =>
     {
@@ -247,7 +291,7 @@ public class MapperTests
         Assert.Equal("24 KB", chip.SizeText);
     });
 
-    [Fact(DisplayName = "Embedded blocks survive WPF's XAML copy (used by undo and copy/paste)")]
+    [Fact(DisplayName = "Embedded blocks survive WPF's XAML copy (used by undo; copy and paste use the journal format, TC-EDT-17)")]
     public void XamlRoundTripOfEmbeddedBlocks() => Sta.Run(() =>
     {
         var img = new ImageBlock { Image = new BlobRef(Guid.NewGuid(), "sha"), Caption = "cap", DisplayWidth = 240, PixelWidth = 10, PixelHeight = 5 };

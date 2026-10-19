@@ -53,6 +53,32 @@
             <!-- Left: calendar and search -->
             <DockPanel Grid.Column="0">
                 <c:MonthCalendarControl DockPanel.Dock="Top" DataContext="{Binding Calendar}" />
+                <!-- Mood counts (FR-MOOD-04) -->
+                <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Padding="14,10" Margin="0,12,0,0" DataContext="{Binding Moods}"
+                        AutomationProperties.Name="Mood counts">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.ColumnSpan="4" Text="MOODS" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="1" Text="Last 30 days" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Text="Last 12 months" VerticalAlignment="Center" Margin="0,4,0,0" />
+                        <c:MoodCount Grid.Row="1" Grid.Column="1" Mood="Sad" Count="{Binding Last30Days.Sad}" />
+                        <c:MoodCount Grid.Row="1" Grid.Column="2" Mood="Neutral" Count="{Binding Last30Days.Neutral}" />
+                        <c:MoodCount Grid.Row="1" Grid.Column="3" Mood="Happy" Count="{Binding Last30Days.Happy}" />
+                        <c:MoodCount Grid.Row="2" Grid.Column="1" Mood="Sad" Count="{Binding Last12Months.Sad}" Margin="10,4,0,0" />
+                        <c:MoodCount Grid.Row="2" Grid.Column="2" Mood="Neutral" Count="{Binding Last12Months.Neutral}" Margin="10,4,0,0" />
+                        <c:MoodCount Grid.Row="2" Grid.Column="3" Mood="Happy" Count="{Binding Last12Months.Happy}" Margin="10,4,0,0" />
+                    </Grid>
+                </Border>
                 <StackPanel DockPanel.Dock="Top" Margin="0,16,0,8" DataContext="{Binding Search}">
                     <Grid>
                         <TextBox x:Name="SearchBox" Text="{Binding QueryText, UpdateSourceTrigger=PropertyChanged}" Padding="30,7,28,7"
@@ -137,6 +163,20 @@
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="Delete this day's entry"
                             AutomationProperties.Name="Delete entry" VerticalAlignment="Center"
                             Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    <!-- How the day felt (FR-MOOD-01); disabled on future days. -->
+                    <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding MoodChoices}" Margin="0,0,12,0" VerticalAlignment="Center"
+                                  IsEnabled="{Binding CanSetMood}" ToolTip="{Binding MoodHint}" ToolTipService.ShowOnDisabled="True"
+                                  AutomationProperties.Name="Mood" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource MoodButton}" CommandParameter="{Binding}"
+                                        Command="{Binding DataContext.ChooseMoodCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <StackPanel>
                         <TextBlock Text="{Binding Heading}" FontFamily="{StaticResource DisplayFont}" FontSize="26" />
                         <TextBlock Text="Planned day" Style="{StaticResource Label}" Margin="0,2,0,0"
@@ -188,7 +228,7 @@
                             </DockPanel>
                             <Border Grid.Column="1" Width="1" Background="{StaticResource Line}" Margin="18,0" />
                             <DockPanel Grid.Column="2" Visibility="{Binding Inspiration.HasQuote, Converter={StaticResource BoolToVis}}">
-                                <TextBlock DockPanel.Dock="Top" Text="PHILOSOPHY" Style="{StaticResource Label}" />
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding Inspiration.QuoteLabel}" Style="{StaticResource Label}" AutomationProperties.Name="Quote category" />
                                 <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                                     <Button DockPanel.Dock="Right" Style="{StaticResource CopyButton}" Command="{Binding Inspiration.CopyQuoteCommand}"
                                             ToolTip="Copy the quote with its author and source" AutomationProperties.Name="Copy quote">

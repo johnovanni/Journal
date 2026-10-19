@@ -155,6 +155,18 @@ public class VaultTests
         Assert.False(v.ContainsPlaintext("Body"));
     }
 
+    [Fact(DisplayName = "TC-MOOD-02 A day's mood is stored encrypted and survives reopening")]
+    public async Task MoodEncrypted()
+    {
+        await using var v = await TempVault.CreateAsync();
+        var e = (await v.Journal.OpenDayAsync(TestData.Today)).Entry!;
+        e.SetMood(Mood.Happy, TestData.Today);
+        await v.Journal.SaveAsync(e);
+        Assert.False(v.ContainsPlaintext("happy"));
+        Assert.False(v.ContainsPlaintext("mood"));
+        Assert.Equal(Mood.Happy, (await v.Journal.OpenDayAsync(TestData.Today)).Entry!.Mood);
+    }
+
     [Fact(DisplayName = "TC-NFR-03 The raw data key never appears on disk")]
     public async Task DataKeyNotOnDisk()
     {
@@ -438,6 +450,27 @@ public class ContentTests
         Assert.Equal(quotes.Count, quotes.Select(q => q.Text).Distinct().Count());
         Assert.True(quotes.Select(q => q.Author).Distinct().Count() >= 20);
         Assert.All(quotes, q => Assert.False(string.IsNullOrWhiteSpace(q.Tradition)));
+    }
+
+    [Fact(DisplayName = "TC-INSP-16 Built-in literature: ≥366 distinct quotes, ≥30 authors, ≥8 regions incl. Latin America and Africa")]
+    public void LiteratureQuotes()
+    {
+        var all = new EmbeddedQuoteSource().All();
+        Assert.Equal(["Literature", "Philosophy"], all.Select(q => q.Category).Distinct().Order());
+        var lit = all.Where(q => q.Category == QuoteCategories.Literature).ToList();
+        var phil = all.Where(q => q.Category == QuoteCategories.Philosophy).ToList();
+        Assert.True(lit.Count >= 366, $"{lit.Count} literature quotes");
+        Assert.Equal(394, phil.Count);
+        Assert.Equal(lit.Count, lit.Select(q => q.Text).Distinct().Count());
+        Assert.Empty(lit.Select(q => q.Text).Intersect(phil.Select(q => q.Text)));
+        Assert.True(lit.Select(q => q.Author).Distinct().Count() >= 30);
+        var regions = lit.Select(q => q.Tradition).Distinct().ToList();
+        Assert.True(regions.Count >= 8, string.Join(", ", regions));
+        Assert.Contains("Latin American", regions);
+        Assert.Contains("African", regions);
+        Assert.All(lit, q => Assert.False(string.IsNullOrWhiteSpace(q.Work), q.Text));
+        // "By day of year" uses the first 366 quotes, so both categories must be among them.
+        Assert.Equal(2, all.Take(366).Select(q => q.Category).Distinct().Count());
     }
 
     [Fact(DisplayName = "TC-NFR-23 Every built-in quote records a public-domain source edition")]

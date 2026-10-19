@@ -12,7 +12,7 @@ public sealed record ImportResult<T>(IReadOnlyList<T> Items, int Skipped)
 public sealed class ImportException(string message) : Exception(message);
 
 /// <summary>
-/// Reads verse lists (reference,text,translation) and quote lists (text,author,work,tradition)
+/// Reads verse lists (reference,text,translation) and quote lists (text,author,work,tradition,category)
 /// from CSV or JSON (FR-INSP-11, FR-INSP-12).
 /// </summary>
 public static class ListImporter
@@ -36,7 +36,7 @@ public static class ListImporter
 
     public static ImportResult<Quote> ImportQuotes(string content, string fileName)
     {
-        var rows = Rows(content, fileName, ["text", "author", "work", "tradition"]);
+        var rows = Rows(content, fileName, ["text", "author", "work", "tradition", "category"]);
         var items = new List<Quote>();
         int skipped = 0;
         foreach (var r in rows)
@@ -46,8 +46,12 @@ public static class ListImporter
             if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(author)) { skipped++; continue; }
             var work = r.GetValueOrDefault("work")?.Trim();
             var tradition = r.GetValueOrDefault("tradition")?.Trim();
+            var category = r.GetValueOrDefault("category")?.Trim();
             items.Add(new Quote(text, author, string.IsNullOrEmpty(work) ? null : work,
-                string.IsNullOrEmpty(tradition) ? "Imported" : tradition));
+                string.IsNullOrEmpty(tradition) ? "Imported" : tradition)
+            {
+                Category = string.IsNullOrEmpty(category) ? QuoteCategories.Imported : category,
+            });
         }
         if (items.Count == 0) throw new ImportException("The file has no valid quotes. Each row needs text and an author.");
         return new ImportResult<Quote>(items, skipped);

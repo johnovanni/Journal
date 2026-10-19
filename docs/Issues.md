@@ -33,6 +33,13 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-007 | Windows Hello prompts are left open after the app closes or a test ends | Bug | Medium | FR-SEC-08, FR-SEC-09; gap → FR-SEC-20 (proposed) | TC-SEC-09 (gap) → TC-SEC-22 | Closed |
 | ISS-008 | Windows Hello prompts automatically on the unlock screen, including after every lock | Change | Medium | FR-SEC-08 (change) | TC-SEC-20 (change), TC-SEC-23 | Closed |
 | ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Closed |
+| ISS-010 | Copy and paste drops checkboxes, images, attached files and headings | Bug | High | FR-EDT-01; FR-EDT-06, FR-EDT-08, FR-IMG-04, FR-ATT-02; new FR-EDT-13 | TC-EDT-01 (manual, text only); gap → TC-EDT-17 (new) | Verified |
+| ISS-011 | Add quotes from great literature (Shakespeare and world authors) | Change | Low | FR-INSP-02, FR-INSP-04, FR-INSP-06 (changed); FR-INSP-16, FR-INSP-17 (new) | TC-INSP-01, TC-INSP-05, TC-INSP-10 (changed); TC-INSP-16 (new) | Verified |
+| ISS-012 | Add world-religion texts to the verse and Science as a quote category (future) | Change | Low | FR-INSP-01, FR-INSP-03 (change); new requirements to be written | New tests to be written | Open |
+| ISS-013 | Mark each day sad, neutral or happy; tint the calendar and count moods | Change | Medium | FR-CAL-03 (change); new FR-MOOD-01…05 | TC-CAL-03 (change); new TC-MOOD-01…06 | Verified |
+| ISS-014 | A ticked checklist item's strikethrough also runs through its checkbox | Bug | Low | FR-EDT-09 | TC-EDT-11 (extended) | Verified |
+| ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Verified |
+| ISS-016 | Closing the window doesn't exit; the app keeps running in the background | Bug | High | FR-ENT-05, FR-ATT-06, FR-SEC-19; new FR-SEC-21 | None (gap: no test closes the real main window); new TC-SEC-26 | Verified |
 
 ---
 
@@ -355,3 +362,453 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 - TC-SEC-25 (new, automated): the hint logic for the unlock and setup windows, and the real unlock window moved between this PC's main and side displays. These three failed before the change (no hint) and pass after.
 - Also in TC-SEC-25: the fallback passes the journal's window to Windows Hello. That plumbing already existed, so this test passed before the change. It guards the window-aware call, which itself can only be checked by hand.
 - TC-SEC-24 (manual) is for the owner.
+
+---
+
+## ISS-010: Copy and paste drops checkboxes, images, attached files and headings
+
+| | |
+|---|---|
+| **Reported** | 2026-10-18 (checkboxes); owner asked to check other elements such as images |
+| **Type / Severity** | Bug / High (cut and paste can permanently lose images and files; see Impact) |
+| **Area** | Editor: copy, cut and paste |
+| **Failing requirements** | FR-EDT-01 (the editor shall behave like a simple word processor, including cut, copy and paste). Content those requirements define is lost on paste: FR-EDT-08 (checklist items and their ticks), FR-IMG-04 (images with captions), FR-ATT-02 (attached-file chips), FR-EDT-06 (Heading 1 and 2). |
+| **Failing tests** | None failed. TC-EDT-01 (manual) only cuts and pastes a plain sentence. **Test gap:** no test copies and pastes checklists, images, files or headings. The automated test "Embedded blocks survive WPF's XAML copy (used by undo and copy/paste)" gave false assurance: it serializes the blocks with `XamlWriter` directly, which is not the path the editor's Copy command uses. |
+| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+
+**Description.** Copying journal content that contains checkboxes, then pasting it into another entry, loses the checkboxes and whether they were ticked. Asked to check other elements too.
+
+**Steps to reproduce.** In an entry, make a checklist with one ticked and one unticked item. Select it, press Ctrl+C, open another day and press Ctrl+V. The items arrive as plain text lines, each starting with a space, with no checkboxes.
+
+**Verification (2026-10-18).** A test program copied each kind of content exactly as Ctrl+C does in the journal's editor. It captured the copied data instead of writing your clipboard, pasted it into a second editor the way Ctrl+V reads it, and compared the result with the original. Each item was surrounded by normal text and copied on its own:
+
+| Content | After copy and paste |
+|---|---|
+| Plain text, bold, italic, underline, strikethrough | Kept |
+| Font, font size, text colour, highlight | Kept |
+| Line breaks, centred paragraphs | Kept |
+| Bulleted, numbered and nested lists | Kept |
+| Heading 1 and Heading 2 | **Heading style lost**: the line comes back as normal text |
+| Checklist items (unticked, ticked, indented) | **Checkbox, tick and indent lost**: plain text with a leading space |
+| Image (with caption, or resized) | **Lost**: an empty line with a single space |
+| Attached file | **Lost**: an empty line with a single space |
+
+**Cause.**
+- The editor uses the standard WPF rich-text box. When it copies, it writes the selection as XAML and RTF, but it **leaves out every embedded control**: the checkbox in a checklist line, and the image and file-chip blocks. Each becomes a single space. They are missing from the copied data, so nothing on the paste side can bring them back.
+- It also copies only standard formatting, not the journal's own paragraph marker for Heading 1 and 2 (`ParagraphProps.Style`). So a pasted heading becomes a normal paragraph when the entry is saved.
+- The copy is never the image-capable "XamlPackage" format; WPF offers that only for its own Image elements.
+
+**Impact.**
+- Copy then paste: checkboxes, images, files and headings silently disappear from the pasted copy.
+- **Cut then paste is worse:** the original is removed and the pasted copy lacks the image or file. When the entry is saved, nothing references that image or file any more, so it is deleted from the vault at the next lock or unlock (NFR-REL-03 clean-up), and the loss becomes permanent. Undo (Ctrl+Z) brings it back only until then.
+- Moving a selection by dragging it within the editor uses the same mechanism, so it very likely has the same effect (not separately tested).
+
+**Proposed fix.**
+1. **The journal's own clipboard format.** When the editor copies or cuts, it also puts the selected content on the clipboard in a journal-only format: the selection converted to the journal's document model (paragraphs, runs, headings, lists, checklist items with ticks and indents, images with captions and sizes, file chips with descriptions). Partly selected paragraphs keep only the selected text. The standard text, RTF and XAML formats stay, so pasting into other apps keeps working.
+2. **Paste.** When the journal's format is on the clipboard, Ctrl+V inserts that content at the caret through the same code that loads entries, so everything comes back exactly. Otherwise paste works as now.
+3. **Images and files** keep pointing to the same encrypted file in the vault, so nothing is duplicated and the clean-up keeps it while any entry uses it. If the source journal is a different vault (another journal on this PC), the image or file can't be read there; the pasted block will say "Image unavailable" or "File unavailable" rather than silently disappearing.
+4. **Pasting into other apps** (Word, email): checklist lines are also copied as plain text "☐ Buy seeds" / "☑ Water beans", so the ticks survive as characters. Images and files are not copied to other apps (unchanged).
+5. **Drag-and-drop within the editor** uses the same format, so moving content by dragging keeps it too.
+
+**Proposed tests.**
+- **TC-EDT-17 (new, automated):** for every content type in the table above, copy within one editor and paste into another through the editor's own copy and paste handlers. It captures the data, so the real clipboard isn't touched. The pasted content must equal the original.
+- Further cases:
+  - a partly selected paragraph pastes only the selected text, with its formatting;
+  - cut and paste of an image keeps the same image and nothing is deleted at the next clean-up;
+  - the plain-text copy shows ☐ and ☑.
+- Each should fail before the fix and pass after.
+- **TC-EDT-01 (manual)** gains a step: copy and paste a checklist, an image and a file between two days.
+- **Also:** the existing "Embedded blocks survive WPF's XAML copy" test is renamed to say it covers undo only.
+
+**Fix (2026-10-19).**
+- **New requirement FR-EDT-13:** copy, cut, paste and drag within the journal keep everything the editor holds; pasted images and files refer to the same vault file; pasting is one undo step; other apps get ☐ / ☑ for checklist lines.
+- **`JournalClipboard`** (new, `src/Journal.App/Editor/JournalClipboard.cs`):
+  - On copy, cut and drag start, it adds the selection to the clipboard in the journal's own format (the document model as JSON, format name `Journal.DocumentFragment.v1`).
+  - It also replaces the plain text with one line per paragraph, checklist lines starting "☐ " or "☑ ".
+  - WPF's RTF and XAML formats are left as they were, so pasting into Word or email works as before.
+  - A selection inside one plain paragraph is left to WPF's own copy, which already keeps its formatting.
+- **Paste:** when the journal format is on the clipboard, the editor inserts that content at the caret through the same code that loads entries.
+  - It replaces any selection, and the whole paste is one undo step.
+  - On an empty line, the pasted content takes the place of that line.
+  - Pasted blocks get new ids. Images and files keep pointing to the same encrypted file, so cut and paste no longer loses them at the next clean-up.
+  - A partly selected paragraph keeps only the selected text, with its heading, list or checklist settings.
+- **Drag-and-drop** inside the editor uses the same format. The drop inserts the content, then lets WPF finish the move so the original is removed.
+- **Supporting changes:**
+  - `FlowDocumentMapper.FromRange` reads the selected part of the document. It cuts each run's text by offset, because WPF's selected text of a list item includes the bullet ("•" and a tab).
+  - `EditorOperations.InsertBlocksAtCaret` inserts several blocks where it used to insert one image or file.
+- **Another journal on this PC:** pasting an image or file copied from a different vault shows the existing "Image unavailable" placeholder, and the file can't be opened. Nothing is lost from either vault.
+- **Tests:**
+  - New TC-EDT-17 (19 automated tests in `CopyPasteTests.cs`): every content type in the table above, partial selections, a whole heading on its own, cut and paste of an image, paste over a selection then undo, a drop, and the plain text for other apps.
+  - With the journal clipboard turned off, 17 of the 19 fail. The other two test the selection reader directly.
+  - TC-EDT-01 (manual) gains the copy, cut and drag steps.
+  - The XAML-copy test is renamed to say it covers undo.
+  - All tests pass: Core 63, App 82, Infrastructure 39 (plus the skipped performance test).
+- **Not automated:** a real mouse drag and the Windows clipboard itself. They are covered by the manual steps in TC-EDT-01.
+
+**To verify:**
+1. In an entry, select a heading, a checklist (one item ticked), an image and a file. Copy, open another day and paste: everything comes back the same.
+2. Cut an image and paste it lower down; lock and unlock; the image is still there.
+3. Drag a checklist line to another place in the entry; it moves and keeps its checkbox.
+4. Copy a checklist and paste it into Notepad; the lines start with ☐ and ☑.
+
+---
+
+## ISS-011: Add quotes from great literature (Shakespeare and world authors)
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19 |
+| **Type / Severity** | Change / Low |
+| **Area** | Daily quote (built-in content, settings, quote card) |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | FR-INSP-02: the day shows a philosophy *or literature* quote. FR-INSP-06: quotes can also be filtered by category (Philosophy, Literature). New **FR-INSP-17**: quote categories are defined by the content, not the code; the card label, settings and filters list whatever categories exist. New **FR-INSP-16**: a built-in literature list of at least 366 distinct public-domain quotes from at least 30 authors across at least 8 languages or regions, each with author, work and source edition. |
+| **Tests to change** | TC-INSP-01 (the card label follows the quote's category); TC-INSP-05 (category filter). New **TC-INSP-16**: the literature list's size, authors, regions, no duplicates, and a source edition on every quote. |
+| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+
+**Description.** The owner wants quotes from great literature alongside the philosophy quotes: Shakespeare, and great authors from around the world.
+
+**Current state (checked 2026-10-19).** The quote list has 394 philosophy quotes from 25 authors, grouped into 11 traditions (Stoic, Christian, Chinese, Renaissance, Roman, Buddhist, Modern European, Greek, Transcendentalist, Enlightenment, French Moralist). The card is labelled "PHILOSOPHY" and Settings says "Show a philosophy quote each day".
+
+**Proposed change.**
+1. **Content.** About 400 literature quotes from public-domain texts, extracted word-for-word from Project Gutenberg editions as the philosophy quotes were, each with author, work and source edition. Translations are limited to public-domain editions. Proposed authors:
+   - **England:** Shakespeare (plays and sonnets), Milton, Jane Austen, Charles Dickens, George Eliot
+   - **America:** Walt Whitman, Emily Dickinson, Mark Twain, Herman Melville
+   - **Spain:** Cervantes
+   - **Italy:** Dante
+   - **Germany:** Goethe
+   - **France:** Victor Hugo, Molière
+   - **Russia:** Tolstoy, Dostoevsky, Chekhov
+   - **Ancient Greece and Rome:** Homer, Virgil
+   - **Persia:** Rumi, Hafez, Omar Khayyám
+   - **India:** Kalidasa, Rabindranath Tagore
+   - **Japan:** Murasaki Shikibu
+   - **China:** Tang poets such as Li Bai and Du Fu
+   - **Arabic:** One Thousand and One Nights
+   - **Lebanon:** Kahlil Gibran (*The Prophet*, 1923)
+   - **Central and South America** (owner's request, 2026-10-19): Sor Juana Inés de la Cruz (Mexico), José Martí (Cuba), Rubén Darío (Nicaragua), Machado de Assis (Brazil), Domingo Sarmiento (Argentina), in public-domain English translations.
+   - **Africa** (owner's request, 2026-10-19): Olaudah Equiano (Nigeria; wrote in English, 1789), Olive Schreiner (South Africa), Sol Plaatje (South Africa, *Mhudi*, 1930), the *Kebra Nagast* (Ethiopia), Apuleius (*The Golden Ass*, North Africa), the Instruction of Ptahhotep (ancient Egypt), and collections of African proverbs from the 1800s.
+   - **Not possible: Jorge Luis Borges** (owner's suggestion). He died in 1986, and his works and their English translations are still under copyright, so they can't be shipped in the app. You can still add Borges quotes yourself through *Import quotes* (FR-INSP-11).
+   - Final choice depends on what public-domain editions exist; the Latin American and African authors have fewer public-domain English translations, so some may yield only a few quotes.
+2. **Category, open to future categories** (owner, 2026-10-19). Each quote gets a category: **Philosophy** (the existing 394) or **Literature** (new). Categories are data, not fixed in the code. The content file names each quote's category, and the label, settings choices and filters are built from the categories present. A future category, such as Science (ISS-012), then needs only content, not code changes. Literature quotes are grouped like the philosophy traditions, by language or region (English, Russian, Persian, Latin American, African, …), so the existing tradition filter keeps working.
+3. **Settings.** "Show a philosophy quote each day" becomes "Show a quote each day", with a tick box for each category (Philosophy, Literature, and any future ones). **Default: all ticked** (owner, 2026-10-19). The tradition filter lists the groups of the ticked categories.
+4. **Quote card.** The label switches with the quote's category, "PHILOSOPHY" or "LITERATURE" (owner, 2026-10-19), and would show any future category's name the same way. Copy (ISS-002) works as before, with author, work and source edition.
+5. **Effect on existing days.** Saved days keep the quote they had (FR-INSP-10). Unsaved days get a different quote than before, because the list changes, as happened with the verses in ISS-001.
+6. **Before building it in:** the owner reviews a list of the chosen quotes (author, work, text) and can remove any.
+
+**Needs the owner's OK.** This means downloading about 25 more public-domain texts from Project Gutenberg, used only to extract the quotes, as before.
+
+**Owner's answers (2026-10-19).**
+- The card label switches between "PHILOSOPHY" and "LITERATURE", and the code must allow future categories.
+- Default: both categories on.
+- Add authors from Central and South America and from Africa (done above; Borges isn't possible, see above).
+- World-religion texts for the VERSE card and Science quotes are a separate future request: ISS-012.
+
+**Proposed tests.**
+- **TC-INSP-16 (new, automated):** the literature list has at least 366 distinct quotes from at least 30 authors and 8 languages or regions (including Latin America and Africa), each with author, work, category and source edition, and none duplicates a philosophy quote.
+- **TC-INSP-05 (extended):** each combination of ticked categories limits the quotes to those categories; a category added only in the content file appears in Settings and on the card with no code change.
+- **TC-INSP-01 (extended):** the card label matches the quote's category.
+
+**Owner's review of the quote list (2026-10-19).** The owner reviewed the list on a review page (quotes numbered L001 onward):
+- Fixed: L021 and L037 were too short (L021 now runs to the end of the sentence; L037 is the first four lines of Sonnet 18 and L038 its closing couplet), L217 ended with a poem number, L239 had line breaks in the middle of sentences (fixed for all hard-wrapped prose), L341 started with the speaker's name.
+- Removed: L032, L044, L087, L399.
+- Added: ten morals from Aesop's fables (Joseph Jacobs, 1894), of which nine remain.
+- Approved: 395 literature quotes from 50 authors in 16 regions.
+
+**Fix (2026-10-19).**
+- **Content:** `quotes.json` (format version 2) holds the 394 philosophy quotes, unchanged and in the same order, and the 395 literature quotes, each with a `category`. The two categories alternate, so the day-of-year mode (which uses the first 366 quotes) shows both. Literature is spread across regions so consecutive days don't repeat one author.
+- **Core:** `Quote.Category` (default Philosophy, so days saved before this change keep a philosophy label); `InspirationSettings.HiddenCategories`; `DailyInspirationService.AvailableCategories()` lists each category with its traditions; the quote filter drops hidden categories and falls back with a warning if all are off. The importer reads an optional `category` column; quotes without one are labelled "Quote".
+- **App:** the card label is bound to the quote's category in capitals. Settings: "Show a quote each day", "Built-in quotes", a CATEGORIES row of tick boxes (all ticked by default), and the traditions list shows only the ticked categories' traditions.
+- **Requirements:** FR-INSP-02 (quote is philosophy or literature; label shows the category), FR-INSP-04 (now about the philosophy list), FR-INSP-06 (category filter), new FR-INSP-16 (literature list) and FR-INSP-17 (data-driven categories).
+- **Tests:** TC-INSP-01, TC-INSP-05 and TC-INSP-10 extended; TC-INSP-16 new. New automated tests: card label per category, category filters and the all-off fallback, a content-only "Science" category, a stored quote without a category, the import category column, Settings category ticks and traditions, and the built-in literature list. They fail before the fix (the category doesn't exist) and pass after. All tests pass: Core 63, App 63, Infrastructure 39 (plus the skipped performance test).
+- **Known effect:** days not yet saved get different quotes than before, because the list changed (as with ISS-001). Saved days keep theirs. Quotes imported before this change have no stored category and show as PHILOSOPHY; re-importing the file fixes that.
+
+**To verify:**
+1. Open several unsaved days; the label switches between PHILOSOPHY and LITERATURE with the quote.
+2. Settings → Verse & quote: both categories are ticked; unticking Literature hides the literature traditions and, after saving, unsaved days show only philosophy quotes.
+3. A saved day still shows the quote it had.
+
+---
+
+## ISS-012: Add world-religion texts to the verse and Science as a quote category (future)
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19 |
+| **Type / Severity** | Change / Low |
+| **Area** | Daily verse and quote (built-in content, settings) |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | FR-INSP-01 and FR-INSP-03 (the verse card is a Bible verse from the World English Bible today); new requirements for religion sources and a Science category, to be written when this is taken up. |
+| **Status** | Open. The owner asked for this as a separate request **for the future**; no analysis or work until the owner says to take it up. |
+
+**Description.** The owner would like:
+1. **World religions under the VERSE card:** passages from other religions' scriptures, as options alongside the Bible.
+2. **Science quotes:** a Science category for the daily quote, alongside Philosophy and Literature.
+
+**Notes for when it is taken up.**
+- **Science:** ISS-011 makes quote categories data-driven, so a Science category would be mostly content work. Public-domain candidates include Newton, Galileo, Kepler, Darwin, Faraday, Pasteur, Ada Lovelace, Maxwell, Poincaré, Ramón y Cajal, and Einstein's *Relativity* (1920 translation). Many modern scientists' writings are still under copyright.
+- **Religions:** the verse card and its settings assume one Bible translation (reference, book filter, WEB label). Supporting several scriptures needs the verse source, label and book filter to work per tradition, similar to quote categories. Public-domain English translations exist for, for example, the Quran (Rodwell 1861, Palmer 1880, Pickthall 1930), the Bhagavad Gita (Edwin Arnold 1885), the Hebrew Bible (JPS 1917), the Dhammapada (Müller 1881) and Sikh scripture (Macauliffe 1909). Which traditions to include, and how they appear on the card, are the owner's choice.
+
+---
+
+## ISS-013: Mark each day sad, neutral or happy; tint the calendar and count moods
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19 |
+| **Type / Severity** | Change / Medium |
+| **Area** | Entry heading, month calendar, a new summary under the calendar, storage |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | FR-CAL-03 (days with an entry are highlighted today; the mood tint has to work with that highlight). New requirements, proposed as FR-MOOD-01…05 below. |
+| **Tests to change** | TC-CAL-03 (highlight), TC-CAL-10 (manual visual check). New tests TC-MOOD-01…06 below. |
+| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+
+**Description.** The owner wants:
+1. For each day, the user can choose a sad, neutral or happy face.
+2. Calendar days are tinted red (sad), default (neutral) or green (happy) by that choice. A day with no choice shows the default color.
+3. A section under the calendar counts the sad, neutral and happy days over the last 30 days and over the last year.
+
+**Current state (checked 2026-10-19).** A day has no mood today. The calendar (`MonthCalendarControl`, `CalendarDayViewModel`) highlights days that have an entry (FR-CAL-03), outlines planned future days (FR-CAL-04) and shows a dot for open checklist items (FR-CAL-05). The calendar gets those flags from the encrypted catalog (`JournalService.HasEntry`), so it doesn't have to open every entry.
+
+**Proposed change.**
+1. **Choosing the mood.** Three face buttons (sad, neutral, happy) next to the day's heading above the editor. Clicking one sets the day's mood; clicking the selected one again clears it. Keyboard and screen-reader names: "Sad day", "Neutral day", "Happy day". **Future days can't be marked** (owner): on a future day the buttons are disabled, with a tooltip saying a mood can be set from that day on.
+2. **Storage.** The mood is saved with the day's entry (encrypted, like the rest of the entry) and copied into the encrypted catalog, so the calendar and the counts don't open every entry. Setting a mood on an empty day saves the day, so the mood isn't lost. A mood counts as content: the day is highlighted as having an entry.
+3. **Calendar tint.** Sad days get a light red background, happy days a light green one, and neutral or unset days the normal background. Both themes get tints that keep the day number readable. **Each day with a mood also shows a tiny face in the corner** (owner), so the mood can be read without colour. **A day with an entry and no mood keeps today's entry highlight; a mood tint replaces it** (owner). The existing marks stay: today's ring, the selected day, the dashed outline for planned days and the open-item dot.
+4. **Counts under the calendar.** A small section, for example:
+   - Last 30 days: 😞 4 · 😐 10 · 🙂 12
+   - Last 12 months: 😞 40 · 😐 120 · 🙂 150
+
+   Both windows end today and include today (owner): the last 30 days are today and the 29 days before it; the last 12 months run from the same date a year ago plus one day through today. Days with no mood aren't counted. Counts update as soon as a mood changes.
+5. **Proposed requirements.**
+   - FR-MOOD-01: each day up to and including today can have one mood (sad, neutral or happy) or none; the user sets and clears it from the day's heading. Future days can't be given a mood.
+   - FR-MOOD-02: the mood is stored encrypted with the entry and kept in the catalog.
+   - FR-MOOD-03: calendar days are tinted red for sad, green for happy, and left at the default background for neutral or no mood, in both themes. Every day with a mood also shows a small face, so the mood doesn't depend on colour. A day with an entry and no mood keeps the entry highlight (FR-CAL-03).
+   - FR-MOOD-04: a summary under the calendar counts sad, neutral and happy days over the last 30 days and the last 12 months, both ending today and including today.
+   - FR-MOOD-05: the counts and tints update immediately when a mood changes.
+
+**Owner's answers (2026-10-19).**
+1. Colour blindness: yes, each day with a mood also shows a tiny face.
+2. A day with an entry and no mood keeps the entry highlight; a mood tint replaces it.
+3. "Last year" means the 12 months ending today.
+4. Future days can't be marked with a mood.
+5. Moods aren't searchable.
+
+**Proposed tests.**
+- TC-MOOD-01 (automated): set, change and clear a day's mood; it survives locking and reopening. On a future day the face buttons are disabled and the service refuses a mood.
+- TC-MOOD-02 (automated): the mood is in the encrypted entry and catalog; no plaintext mood on disk.
+- TC-MOOD-03 (automated): calendar cells report sad, happy, neutral and unset correctly; the tint and the small face follow them; a day with an entry and no mood keeps the entry highlight.
+- TC-MOOD-04 (automated): counts for a known set of days, including today, the first and last day inside each window, the day just outside each window, and unset days.
+- TC-MOOD-05 (automated): changing a mood updates the tint and the counts at once.
+- TC-MOOD-06 (manual): tints and marks are distinguishable in light and dark themes at 100 % and 150 % scaling.
+
+
+**Fix (2026-10-19).**
+- **Core:**
+  - `Mood` (None, Sad, Neutral, Happy) on `JournalEntry`. `SetMood` refuses a mood for a day after today, and a mood alone keeps the entry.
+  - The entry file stores `mood` only when set, so files without a mood look as before.
+  - `CatalogEntry.Mood` holds the mood in the catalog; catalogs written before have none.
+  - `JournalService.Moods(from, to)` returns the moods for the calendar; `GetMoodSummary()` returns the counts for the last 30 days (today and the 29 days before) and the last 12 months (from the same date a year ago plus one day, through today).
+- **Day heading:**
+  - Three face buttons sit to the right of the date. Each face is drawn (`MoodFace`), so it looks the same everywhere without needing a colour-emoji font.
+  - Clicking a face sets the mood and saves at once; clicking it again clears it.
+  - On future days the faces are disabled, and the tooltip says the mood can be chosen once the day arrives.
+- **Calendar:**
+  - Sad days get a light red background and happy days a light green one; neutral keeps the normal background. A mood tint replaces the entry highlight; days with an entry and no mood keep it.
+  - Every day with a mood shows a small face in its top-right corner (owner: colour blindness). The selected day keeps its dark fill and still shows its face.
+  - The screen-reader name adds, for example, ", happy day".
+- **Counts:** a MOODS card under the calendar shows "Last 30 days" and "Last 12 months", each with a sad, neutral and happy face and its count. It updates whenever a day is saved.
+- **Docs:** new requirements FR-MOOD-01…05 (Requirements §2.12) and tests TC-MOOD-01…06 (TestCases §2.12); FR-CAL-03, TC-CAL-03 and TC-CAL-10 updated; architecture §8.1a.
+- **Tests:**
+  - New: `MoodTests` (Core), `MoodViewModelTests` (App), the encrypted-vault check (Infrastructure), and a real-window layout test at the smallest window size.
+  - A screenshot of the main window with sad, neutral and happy days was checked by eye.
+  - All tests pass: Core 67, App 88, Infrastructure 40 (plus the skipped performance test).
+
+**To verify:**
+1. On today, click the happy face. Today's date turns green with a small smile, and the MOODS card counts it.
+2. Click the sad face: the day turns red. Click it again: the mood is cleared.
+3. Open a day next week: the faces are greyed out.
+4. Mark a few earlier days and check the counts for the last 30 days and the last 12 months.
+5. Lock and unlock: the moods are still there.
+
+
+---
+
+## ISS-014: A ticked checklist item's strikethrough also runs through its checkbox
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19, with a screenshot (October 13, 2026: "More new stuff" ticked) |
+| **Type / Severity** | Bug / Low (display only; nothing stored is wrong) |
+| **Area** | Editor: checklist items |
+| **Failing requirements** | FR-EDT-09: ticked checklist items are shown with strikethrough. The strikethrough is meant for the item's text; it is also drawn through the checkbox. |
+| **Failing tests** | None failed. **Test gap:** TC-EDT-11 checks that the text is struck through when ticked and not after unticking, and that the stored format is unchanged. It doesn't check that the checkbox stays clear of the line. |
+| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+
+**Description.** When a checklist item is ticked, its text is struck through as expected, but a second line also appears. It runs behind the checkbox and sits slightly lower than the strikethrough on the text.
+
+**Steps to reproduce.** Make a checklist item with some text and tick it. A line crosses the checkbox, a little below the line through the text.
+
+**Cause.** When an item is ticked, the editor puts the strikethrough on the whole paragraph (`EditorOperations.ApplyCheckedDecoration` sets `Paragraph.TextDecorations`), so the strikethrough is not stored in the text runs. The paragraph also holds the checkbox, which is the paragraph's first inline. So WPF draws the strikethrough across the checkbox too. The checkbox is centred on the line rather than sitting on the text's baseline, so the line through it is drawn at a slightly different height from the line through the text.
+
+**Proposed fix.**
+1. Keep the strikethrough display-only (FR-EDT-09, TC-EDT-11), but stop it reaching the checkbox. The checkbox's container gets its own empty decoration setting, which overrides the paragraph's. If WPF still draws the line there, the fallback is to put the strikethrough on the text inlines only and mark it as display-only, so saving doesn't store it as the user's own formatting.
+2. Ticking, unticking, loading a saved entry with ticked items, and pasting ticked items (ISS-010) all go through the same code, so all four are fixed together.
+
+**Proposed tests.**
+- **TC-EDT-11 (extended, automated):** after ticking, the checkbox's container has no strikethrough while the text does. After unticking, neither does. Also check this for an item loaded already ticked and for a pasted ticked item. The stored run format stays unchanged. This fails before the fix.
+- **TC-EDT-11 (manual step):** tick an item and check that no line crosses the checkbox, in light and dark themes at 100 % and 150 % scaling.
+
+**Fix (2026-10-19).**
+- **First attempt, which didn't work:** giving the checkbox's container its own empty decoration setting. WPF adds the paragraph's decorations to everything inside it, so the line stayed.
+- **Fix:**
+  - The checkbox is now a `ChecklistCheckBox` (`src/Journal.App/Controls/BlockControls.cs`). It takes up the checkbox plus the 6-pixel gap before the text, and paints the editor's background under both.
+  - WPF draws the paragraph's strikethrough behind embedded controls, so the line now shows only through the text.
+  - The strikethrough stays display-only on the paragraph, so nothing stored changes.
+  - Saved entries, newly ticked items and pasted items (ISS-010) all create their checkbox the same way, so all of them are fixed.
+- **Side effects:**
+  - Clicking in the small gap between the checkbox and the text now ticks the item.
+  - If you select a ticked line, the selection colour doesn't show in that gap.
+- **Test:** TC-EDT-11 is extended with an automated pixel test. It renders a ticked item with and without its strikethrough. The checkbox and the gap must match pixel for pixel, while the text area must differ. It failed before the fix and passes after.
+- All tests pass: Core 63, App 83, Infrastructure 39 (plus the skipped performance test).
+
+**To verify:** tick a checklist item. The line goes through the text only, with nothing behind or beside the checkbox. Untick it, and the line is gone.
+
+---
+
+## ISS-015: Settings: a section per quote category, and tick-box lists in alphabetical columns
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19 |
+| **Type / Severity** | Change / Low |
+| **Area** | Settings window, *Verse & quote* tab |
+| **Failing requirements** | None (layout change). |
+| **Requirements to change** | FR-INSP-06 (how the category and tradition choices are laid out, and that tradition choices belong to their category). |
+| **Tests to change** | TC-INSP-05 (Settings part); a new automated layout check. |
+| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+
+**Description.** The owner wants:
+1. Philosophy and Literature each in their own section of the quote settings, with their own choices. Philosophy comes first; the user scrolls down to reach Literature.
+2. The lists of tick boxes ordered alphabetically **down columns** (A, B, C down the first column, then on to the next), not across rows.
+
+**Current state (checked 2026-10-19).**
+- The quote card has "Show a quote each day", the source (built-in or imported), then one CATEGORIES row (Literature, Philosophy) and one TRADITIONS list. That list holds the traditions of all ticked categories mixed together, flowing left to right across rows. The verse card's BOOKS list also flows across rows, in Bible order.
+- **Shared tradition name:** "Chinese" is a tradition in both Philosophy (Confucius, Lao Tzu…) and Literature (Li Po, Tu Fu…). The filter matches traditions by name only, so ticking "Chinese" picks Chinese quotes from both categories. With separate sections, ticking Chinese under Philosophy would also affect Literature, which would be confusing.
+
+**Proposed change.**
+1. **One section per category**, Philosophy first, then the others alphabetically (Literature, and later Science, ISS-012). Each section has:
+   - a heading (PHILOSOPHY, LITERATURE);
+   - a tick box "Include philosophy quotes" (on by default), which replaces the CATEGORIES row;
+   - "Only these traditions (none ticked = all)", listing only that category's traditions; it is greyed out when the category is turned off.
+   The settings tab already scrolls, so Literature sits below Philosophy.
+2. **Tradition choices belong to their category.** A ticked tradition is saved together with its category, for example Philosophy › Chinese. Ticking Chinese under Philosophy no longer pulls in Chinese literature. Settings saved before this change are read as before: a tradition ticked there applies to each category that has it.
+3. **Column order.** Each tick-box list is laid out in columns, filled top to bottom and then left to right (3 columns across the window's width). Traditions are sorted alphabetically; the BOOKS list keeps Bible order (owner).
+4. "Show a quote each day" and the built-in / imported choice stay at the top of the quote card.
+
+**Owner's answers (2026-10-19).**
+1. **Bible books:** columns, in Bible order (Genesis … Revelation down the columns), not alphabetical.
+2. **One card:**
+   - The main window keeps a single quote card. Its label says PHILOSOPHY or LITERATURE, depending on the quote shown; that is already how it works since ISS-011, so the main window doesn't change.
+   - In Settings, the Philosophy section and the Literature section each have their own tick box.
+   - Both sections sit in the same scrollable quote card, under the shared "Show a quote each day" and source choice.
+
+**Proposed tests.**
+- **TC-INSP-05 (extended, automated):**
+  - Settings list one section per category, Philosophy first.
+  - Each section lists only its own traditions, alphabetically.
+  - Turning a category off greys out its traditions.
+  - Ticking Chinese under Philosophy saves Philosophy › Chinese, and the day's quotes then include no Chinese literature.
+  - Settings saved before the change still load.
+- **New automated layout test:** in the real Settings window, the tradition lists run top to bottom in each column, in alphabetical order, and the BOOKS list runs down the columns in Bible order, with no item cut off.
+
+**Fix (2026-10-19).**
+- **Settings, Verse & quote tab:**
+  - Under "Show a quote each day" and the source choice, the quote card has one section per category: PHILOSOPHY first, then LITERATURE (and later ones alphabetically), all in the same scrolling tab.
+  - Each section has an "Include … quotes" tick box and its own "Only these traditions" list, greyed out when the category is off.
+  - The main window is unchanged: one quote card, labelled by the quote's category.
+- **Columns:** a new `ColumnPanel` (`src/Journal.App/Controls/ColumnPanel.cs`) lays out tick boxes in 3 equal columns, filled top to bottom and then left to right. Traditions are alphabetical; BOOKS keeps Bible order (owner).
+- **Tradition choices belong to their category:**
+  - A ticked tradition is saved as "Category/Tradition", for example "Philosophy/Chinese".
+  - A category with nothing ticked keeps all its quotes, so ticking Chinese under Philosophy no longer pulls in Chinese literature.
+  - A tradition saved before this change (no category) still applies to every category that has it, and shows ticked in each of those sections.
+- **Docs:** FR-INSP-06 and TC-INSP-05 updated; architecture §8.2 updated.
+- **Tests:**
+  - TC-INSP-05 extended. Core: the per-category filter, and the shared "Chinese" tradition with old and new settings. App: the view model's sections. A new real-window layout test (`SettingsLayoutTests`) checks section order, column order for traditions and books, and that no tick box is cut off.
+  - The tradition test changed meaning: with Philosophy › Stoic ticked, philosophy quotes are all Stoic, and literature quotes still appear.
+  - All tests pass: Core 64, App 84, Infrastructure 39 (plus the skipped performance test).
+
+**To verify:** open Settings → Verse & quote.
+1. PHILOSOPHY and its traditions come first; scroll down to LITERATURE and its traditions.
+2. The lists read down the columns: traditions A to Z, books Genesis onward.
+3. Unticking "Include literature quotes" greys out the literature traditions; after saving, unsaved days show only philosophy quotes.
+4. Ticking Chinese under Philosophy only and saving gives Chinese philosophy as the only philosophy, while literature quotes still appear.
+
+---
+
+## ISS-016: Closing the window doesn't exit; the app keeps running in the background
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19 |
+| **Type / Severity** | Bug / High (the app can't be closed normally; a hidden copy blocks starting it again) |
+| **Area** | Closing the app (`AppController`) |
+| **Failing requirements** | No requirement says plainly that closing the main window exits the app; that is the expected behaviour (proposed new **FR-SEC-21**). Affected: FR-ENT-05 (save on close), FR-ATT-06 (temporary files deleted on exit), FR-SEC-19 (one instance: a leftover hidden copy blocks a new start). |
+| **Failing tests** | None failed. **Test gap:** no test closes the real main window through its close button. TC-ENT-05 covers saving on close through the view model only. |
+| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+
+**Description.** Clicking the window's close button (X) makes the journal content disappear, but the window and the app stay open. A second click closes the window, yet Journal sometimes stays in Task Manager's process list. **Expected:** one click saves, locks, closes the window and ends the process.
+
+**Evidence (2026-10-19).**
+- **App log:** a normal exit logs "Locked (Exit)" followed by "Exited". Today at 16:21, 16:46 and 16:58 the log has "Locked (Exit)" with no "Exited", so the shutdown didn't finish. At 16:05 and 16:25 it did.
+- **Experiment:** a window that, while closing, cancels the close and calls `Close()` again gets an `InvalidOperationException` ("Cannot … call … Close … while a Window is closing") and stays visible. This matches what the owner saw.
+
+**Cause.**
+1. When the main window is closing, `AppController.OnMainClosing` cancels the close and starts `ExitAsync`: save, lock, then shut down. It doesn't wait for that to finish.
+2. Locking runs straight through when nothing needs to wait, for example when nothing is left to save. Then, still inside the window's closing event, the lock code (`OnLocked`):
+   - clears the window's content (the journal disappears);
+   - unhooks the closing handler;
+   - calls `Close()` on the window that is already closing. WPF refuses that and throws.
+3. The error stops the exit sequence before it shuts the app down. It is swallowed, because nothing waits for `ExitAsync`. So:
+   - the window stays open and empty;
+   - `Application.Shutdown()` is never called;
+   - the vault services aren't disposed and temporary files aren't cleaned up.
+4. On the second click the closing handler is gone, so the window simply closes. The app is set to shut down only when told to, and nobody tells it to, so the process keeps running with no window.
+5. That hidden copy still holds the single-instance lock. Starting Journal again just signals the hidden copy, so the app seems not to start until the process is ended in Task Manager.
+6. It happens only sometimes, because when locking does have to wait (a save, for example), the lock code runs after the closing event has finished, and then everything works.
+
+**Proposed fix.**
+1. **Close without fighting WPF:** when the X is clicked, cancel that close as now, run the save and lock, and only then close the window and shut down. The lock code must not call `Close()` on a window that is closing; it hides the window, or leaves closing to the exit step.
+2. **Always shut down:**
+   - The exit step runs inside `try/finally`, so `Application.Shutdown()` happens even if saving or locking fails. A failure is logged and shown, as other errors are.
+   - The main window's `Closed` event also shuts down whenever the app is exiting, so no path can leave the process with no window.
+3. **Safety net:** once shutdown starts, anything left running in the background (timers, the single-instance listener) can't keep the process alive. The listener thread is already a background thread; this is checked.
+4. **Requirement:** new **FR-SEC-21**: closing the main window saves the open day, locks the vault, deletes temporary files and ends the process, in one click, even when nothing needs saving.
+
+**Proposed tests.**
+- **TC-SEC-26 (new, automated):** with the real `AppController` and main window on a test vault, click close (`Close()`) in two cases: nothing to save (the case that fails today), and unsaved text.
+  - In both cases the window closes on the first try and shutdown is requested exactly once.
+  - The text is saved, the vault is locked, and no error is raised.
+  - This fails before the fix.
+- **TC-SEC-26 (automated):** make the save fail during close. The app still shuts down and logs the error.
+- **TC-SEC-26 (manual):** close with the X, both after editing and without editing. The window closes at once and Journal disappears from Task Manager within a few seconds; starting it again works.
+
+**Fix (2026-10-19).**
+- **`MainWindowCloser`** (new, `src/Journal.App/Services/MainWindowCloser.cs`) handles the main window's close:
+  - The first close is cancelled, and the save and lock start only after the closing event has returned.
+  - Then, in a `finally` block, it closes the window for real and asks the app to shut down. This happens even when saving or locking fails; the failure is logged and shown.
+  - Further clicks while it's working are ignored.
+- **`AppController`:**
+  - The lock code no longer closes the main window while the app is exiting; the closer does that once locking has finished.
+  - For a normal lock (the Lock button, idle, Windows lock), the closer is detached and the window closes as before.
+  - `Exit()` can safely run more than once.
+- **Requirement and tests:**
+  - New requirement **FR-SEC-21**.
+  - New test **TC-SEC-26**, because TC-SEC-21 was already taken. Its automated part is 4 tests in `CloseTests.cs`, run on a real window: nothing to save (the failing case), a slow save with a second click, a failing save, and a detached closer.
+  - The experiment recorded above reproduces the old failure.
+  - All tests pass: Core 67, App 92, Infrastructure 40 (plus the skipped performance test).
+- **Leftover process:** the hidden Journal process from 4:54 PM (PID 42932) was this bug. Its log ends with "Locked (Exit)", so the journal was saved and locked before it hung. The owner ended it in Task Manager.
+
+**To verify:**
+1. Open Journal, don't type anything, and click the X. The window closes at once, and Journal leaves Task Manager within a few seconds.
+2. Open it again (it starts normally), type something, and click the X. It closes in one click, and the text is there next time.
+3. Lock and unlock with the Lock button. That still works as before.
+

@@ -19,7 +19,8 @@ public sealed record CatalogEntry(
     IReadOnlyList<CatalogTab> Tabs,
     int OpenChecklistItems,
     int DoneChecklistItems,
-    IReadOnlyList<Guid> BlobIds)
+    IReadOnlyList<Guid> BlobIds,
+    Mood Mood = Mood.None)
 {
     public static CatalogEntry From(JournalEntry e)
     {
@@ -37,7 +38,7 @@ public sealed record CatalogEntry(
                 t.Document.Attachments().Select(a => a.Description.Length > 0 ? $"{a.FileName} {a.Description}" : a.FileName).ToList()));
         }
         return new CatalogEntry(e.Date, e.AllTags().Select(t => t.Name).ToList(), tabs, open, done,
-            e.ReferencedBlobs().Select(b => b.Id).Distinct().ToList());
+            e.ReferencedBlobs().Select(b => b.Id).Distinct().ToList(), e.Mood);
     }
 }
 
@@ -71,6 +72,27 @@ public sealed class Catalog
 
     public ISet<DateOnly> DatesWithOpenItems(DateOnly from, DateOnly to) =>
         _entries.Values.Where(e => e.Date >= from && e.Date <= to && e.OpenChecklistItems > 0).Select(e => e.Date).ToHashSet();
+
+    /// <summary>Days in the range that have a mood (FR-MOOD-03).</summary>
+    public IReadOnlyDictionary<DateOnly, Mood> MoodsInRange(DateOnly from, DateOnly to) =>
+        _entries.Values.Where(e => e.Date >= from && e.Date <= to && e.Mood != Mood.None).ToDictionary(e => e.Date, e => e.Mood);
+
+    /// <summary>Sad, neutral and happy days from <paramref name="from"/> to <paramref name="to"/>, inclusive (FR-MOOD-04).</summary>
+    public MoodCounts CountMoods(DateOnly from, DateOnly to)
+    {
+        int sad = 0, neutral = 0, happy = 0;
+        foreach (var e in _entries.Values)
+        {
+            if (e.Date < from || e.Date > to) continue;
+            switch (e.Mood)
+            {
+                case Mood.Sad: sad++; break;
+                case Mood.Neutral: neutral++; break;
+                case Mood.Happy: happy++; break;
+            }
+        }
+        return new MoodCounts(sad, neutral, happy);
+    }
 
     /// <summary>Distinct tags in display case (first spelling seen), sorted.</summary>
     public IReadOnlyList<string> AllTags() =>

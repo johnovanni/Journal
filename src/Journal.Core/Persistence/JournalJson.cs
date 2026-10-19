@@ -60,6 +60,8 @@ public static class JournalJson
         public Verse? Verse { get; set; }
         public Quote? Quote { get; set; }
         public bool InspirationPinned { get; set; }
+        /// <summary>Absent when the day has no mood, so older files and files without a mood look the same.</summary>
+        public Mood? Mood { get; set; }
 
         public static EntryDto From(JournalEntry e) => new()
         {
@@ -71,6 +73,7 @@ public static class JournalJson
             Verse = e.Inspiration.Verse,
             Quote = e.Inspiration.Quote,
             InspirationPinned = e.IsInspirationPinned,
+            Mood = e.Mood == Domain.Mood.None ? null : e.Mood,
         };
 
         public JournalEntry ToEntry() => JournalEntry.Restore(
@@ -78,7 +81,8 @@ public static class JournalJson
             Tabs.Select(t => new EntryTab(t.Tag is null ? null : Tag.Parse(t.Tag), t.Document ?? new JournalDocument()) { Id = t.Id }),
             ExtraTags.Select(Tag.Parse),
             new DailyInspiration(Verse, Quote),
-            InspirationPinned);
+            InspirationPinned,
+            Mood ?? Domain.Mood.None);
     }
 
     internal sealed class TabDto

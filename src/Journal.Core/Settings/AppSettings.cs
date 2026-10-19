@@ -30,6 +30,8 @@ public sealed class InspirationOptions
     public List<string> VerseBooks { get; set; } = [];
     public string QuoteSource { get; set; } = SourceNames.BuiltIn;
     public List<string> Traditions { get; set; } = [];
+    /// <summary>Quote categories turned off; empty means all are shown (FR-INSP-17).</summary>
+    public List<string> HiddenCategories { get; set; } = [];
     public SelectionMode Mode { get; set; } = SelectionMode.DayOfYear;
 
     public InspirationSettings ToSettings() => new()
@@ -40,6 +42,7 @@ public sealed class InspirationOptions
         VerseBooks = VerseBooks.ToHashSet(StringComparer.OrdinalIgnoreCase),
         QuoteSource = QuoteSource,
         Traditions = Traditions.ToHashSet(StringComparer.OrdinalIgnoreCase),
+        HiddenCategories = HiddenCategories.ToHashSet(StringComparer.OrdinalIgnoreCase),
         Mode = Mode,
     };
 }

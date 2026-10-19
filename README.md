@@ -49,4 +49,4 @@ Manual test cases (real Windows Hello, Win+L, display scaling, a second PC) are 
 ## Content sources
 
 - Bible verses: World English Bible (public domain), from ebible.org.
-- Philosophy quotes: public-domain editions from Project Gutenberg. Each quote records its source edition in `src/Journal.Infrastructure/Content/quotes.json`.
+- Philosophy and literature quotes: public-domain editions from Project Gutenberg. Each quote records its category and source edition in `src/Journal.Infrastructure/Content/quotes.json`.

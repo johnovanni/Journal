@@ -38,10 +38,12 @@ public sealed class AppController : ISettingsHost
     private VaultServices? _services;
     private ImageCache? _images;
     private MainWindow? _main;
+    private MainWindowCloser? _closer;
     private MainViewModel? _mainVm;
     private bool _locking;
     private Action? _cancelPendingHello;
     private bool _exiting;
+    private bool _shutdownRequested;
 
     public AppController(ISettingsStore settingsStore, ILogger log)
     {
@@ -197,7 +199,8 @@ public sealed class AppController : ISettingsHost
         session.Locked += OnLocked;
 
         _main = new MainWindow(_mainVm);
-        _main.Closing += OnMainClosing;
+        // One click on close saves, locks and exits (FR-SEC-21, ISS-016).
+        _closer = new MainWindowCloser(_main, LockForExitAsync, Exit, OnExitError);
         Application.Current.MainWindow = _main;
         _main.Show();
         _main.Activate();
@@ -260,10 +263,16 @@ public sealed class AppController : ISettingsHost
         _images = null;
         if (_main is not null)
         {
-            _main.Closing -= OnMainClosing;
             _main.DataContext = null;
-            _main.Close();
+            // When exiting, the closer closes the window once locking has finished (ISS-016); closing it here
+            // could happen inside the window's own Closing event, which WPF refuses.
+            if (_closer is not { IsExiting: true })
+            {
+                _closer?.Detach();
+                _main.Close();
+            }
             _main = null;
+            _closer = null;
         }
         _mainVm = null;
         _services?.Dispose();
@@ -272,22 +281,24 @@ public sealed class AppController : ISettingsHost
         if (!_exiting) ShowUnlock(VaultFolderSetting);
     }
 
-    private void OnMainClosing(object? sender, System.ComponentModel.CancelEventArgs e)
-    {
-        e.Cancel = true;
-        _ = ExitAsync();
-    }
-
-    private async Task ExitAsync()
+    private async Task LockForExitAsync()
     {
         _exiting = true;
         await LockAsync(LockReason.Exit);
-        Exit();
     }
 
+    private void OnExitError(Exception e)
+    {
+        _log.LogError(e, "Saving or locking on exit failed.");
+        _dialogs.Error("Closing Journal", "Journal couldn't finish saving before closing. " + e.Message);
+    }
+
+    /// <summary>Ends the app. Safe to call more than once.</summary>
     private void Exit()
     {
         _exiting = true;
+        if (_shutdownRequested) return;
+        _shutdownRequested = true;
         _cancelPendingHello?.Invoke();
         SystemEvents.SessionSwitch -= OnSessionSwitch;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
@@ -350,7 +361,7 @@ public sealed class AppController : ISettingsHost
     public VaultSession Session => _session ?? throw new InvalidOperationException("The journal is locked.");
     public string VaultFolder => VaultFolderSetting;
     public IReadOnlyList<string> AvailableBooks => _services?.Journal.Inspiration.AvailableBooks() ?? [];
-    public IReadOnlyList<string> AvailableTraditions => _services?.Journal.Inspiration.AvailableTraditions() ?? [];
+    public IReadOnlyList<QuoteCategory> QuoteCategories => _services?.Journal.Inspiration.AvailableCategories() ?? [];
     public int ImportedVerseCount => _services?.ImportedVerses.Count ?? 0;
     public int ImportedQuoteCount => _services?.ImportedQuotes.Count ?? 0;
 

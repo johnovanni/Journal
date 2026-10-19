@@ -59,6 +59,8 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
         Box.PreviewKeyDown += Box_PreviewKeyDown;
         Box.PreviewDragOver += Box_PreviewDragOver;
         Box.PreviewDrop += Box_PreviewDrop;
+        // Copy, cut, paste and drag keep checklists, images, files and headings (ISS-010).
+        JournalClipboard.Attach(Box, () => _tab is not null && !Box.IsReadOnly, () => _tab?.MarkDirty());
         DataObject.AddPastingHandler(Box, Box_Pasting);
         DataContextChanged += (_, e) => Bind(e.OldValue as EntryTabViewModel, e.NewValue as EntryTabViewModel);
         Loaded += (_, _) => Subscribe();

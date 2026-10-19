@@ -152,10 +152,9 @@ public sealed class FlowDocumentMapper
         }
     }
 
-    public static InlineUIContainer NewCheckBox(bool isChecked) => new(new CheckBox
+    public static InlineUIContainer NewCheckBox(bool isChecked) => new(new ChecklistCheckBox
     {
         IsChecked = isChecked,
-        Margin = new Thickness(0, 0, 6, 0),
         Focusable = false,
         Cursor = System.Windows.Input.Cursors.Arrow,
     })
@@ -217,7 +216,7 @@ public sealed class FlowDocumentMapper
     public JournalDocument FromFlowDocument(FlowDocument fd)
     {
         var blocks = new List<DocBlock>();
-        Walk(fd.Blocks, -1, ListKind.None, blocks);
+        Walk(fd.Blocks, -1, ListKind.None, blocks, null);
         // Drop trailing empty paragraphs the editor always keeps, but keep one when the document is empty.
         while (blocks.Count > 0 && blocks[^1] is ParagraphBlock { List: ListKind.None } last && last.Runs.Count == 0 && blocks.Count > 1)
             blocks.RemoveAt(blocks.Count - 1);
@@ -225,19 +224,31 @@ public sealed class FlowDocumentMapper
         return new JournalDocument(blocks);
     }
 
-    private void Walk(BlockCollection source, int listLevel, ListKind kind, List<DocBlock> output)
+    /// <summary>
+    /// The blocks that overlap [start, end), with paragraphs cut to the selected text but keeping their
+    /// style, list and checkbox (ISS-010: copying and pasting within the journal).
+    /// </summary>
+    public JournalDocument FromRange(FlowDocument fd, TextPointer start, TextPointer end)
+    {
+        var blocks = new List<DocBlock>();
+        Walk(fd.Blocks, -1, ListKind.None, blocks, (start, end));
+        return new JournalDocument(blocks);
+    }
+
+    private void Walk(BlockCollection source, int listLevel, ListKind kind, List<DocBlock> output, (TextPointer Start, TextPointer End)? range)
     {
         foreach (var block in source)
         {
+            if (range is { } r && (block.ElementEnd.CompareTo(r.Start) <= 0 || block.ElementStart.CompareTo(r.End) >= 0)) continue;
             switch (block)
             {
                 case WpfParagraph p:
-                    output.Add(ReadParagraph(p, kind, Math.Max(listLevel, 0)));
+                    output.Add(ReadParagraph(p, kind, Math.Max(listLevel, 0), range));
                     break;
                 case DocList list:
                     var listKind = IsNumbered(list.MarkerStyle) ? ListKind.Numbered : ListKind.Bulleted;
                     int level = Math.Min(listLevel + 1, ParagraphBlock.MaxListLevel);
-                    foreach (var item in list.ListItems) Walk(item.Blocks, level, listKind, output);
+                    foreach (var item in list.ListItems) Walk(item.Blocks, level, listKind, output, range);
                     break;
                 case BlockUIContainer { Child: ImageBlockView view }:
                     output.Add(view.ToBlock());
@@ -246,13 +257,13 @@ public sealed class FlowDocumentMapper
                     output.Add(chip.ToBlock());
                     break;
                 case Section section:
-                    Walk(section.Blocks, listLevel, kind, output);
+                    Walk(section.Blocks, listLevel, kind, output, range);
                     break;
                 case Table table:
                     foreach (var group in table.RowGroups)
                         foreach (var row in group.Rows)
                             foreach (var cell in row.Cells)
-                                Walk(cell.Blocks, -1, ListKind.None, output);
+                                Walk(cell.Blocks, -1, ListKind.None, output, range);
                     break;
             }
         }
@@ -262,7 +273,8 @@ public sealed class FlowDocumentMapper
         s is TextMarkerStyle.Decimal or TextMarkerStyle.LowerLatin or TextMarkerStyle.UpperLatin
             or TextMarkerStyle.LowerRoman or TextMarkerStyle.UpperRoman;
 
-    public static ParagraphBlock ReadParagraph(WpfParagraph p, ListKind kind = ListKind.None, int level = 0)
+    public static ParagraphBlock ReadParagraph(WpfParagraph p, ListKind kind = ListKind.None, int level = 0,
+        (TextPointer Start, TextPointer End)? range = null)
     {
         var result = new ParagraphBlock
         {
@@ -282,7 +294,7 @@ public sealed class FlowDocumentMapper
             result.List = kind;
             result.ListLevel = level;
         }
-        foreach (var inline in inlines) ReadInline(inline, result.Runs);
+        foreach (var inline in inlines) ReadInline(inline, result.Runs, range);
         return result.NormalizeRuns();
     }
 
@@ -290,21 +302,35 @@ public sealed class FlowDocumentMapper
     public static CheckBox? GetCheckBox(WpfParagraph p) =>
         p.Inlines.FirstInline is InlineUIContainer { Child: CheckBox cb } ? cb : null;
 
-    private static void ReadInline(Inline inline, List<TextRun> runs)
+    /// <summary>Reads an inline's text; with a range, only the part inside it.</summary>
+    private static void ReadInline(Inline inline, List<TextRun> runs, (TextPointer Start, TextPointer End)? range)
     {
         switch (inline)
         {
             case Run r:
-                if (r.Text.Length > 0) runs.Add(ReadRunFormat(r) with { Text = r.Text });
+                var text = r.Text;
+                if (range is { } rr)
+                {
+                    var from = Max(r.ContentStart, rr.Start);
+                    var to = Min(r.ContentEnd, rr.End);
+                    // Cut the run's own text by offset; TextRange.Text would add list bullets ("•\t").
+                    var skip = r.ContentStart.GetOffsetToPosition(from);
+                    text = from.CompareTo(to) < 0 ? text.Substring(skip, from.GetOffsetToPosition(to)) : "";
+                }
+                if (text.Length > 0) runs.Add(ReadRunFormat(r) with { Text = text });
                 break;
             case LineBreak lb:
-                runs.Add(ReadRunFormat(lb) with { Text = "\n" });
+                if (range is not { } lr || (lb.ElementStart.CompareTo(lr.Start) >= 0 && lb.ElementEnd.CompareTo(lr.End) <= 0))
+                    runs.Add(ReadRunFormat(lb) with { Text = "\n" });
                 break;
             case Span span:
-                foreach (var child in span.Inlines.ToList()) ReadInline(child, runs);
+                foreach (var child in span.Inlines.ToList()) ReadInline(child, runs, range);
                 break;
         }
     }
+
+    private static TextPointer Max(TextPointer a, TextPointer b) => a.CompareTo(b) >= 0 ? a : b;
+    private static TextPointer Min(TextPointer a, TextPointer b) => a.CompareTo(b) <= 0 ? a : b;
 
     /// <summary>
     /// Resolves formatting from local values on the inline and its parent spans (stopping at the paragraph),

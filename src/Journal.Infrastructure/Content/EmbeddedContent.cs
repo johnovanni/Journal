@@ -20,18 +20,22 @@ public sealed class EmbeddedVerseSource : IVerseSource
     private sealed record VerseRow(string Reference, string? Book, string Text, string Translation);
 }
 
-/// <summary>Built-in quotes from public-domain editions of classical authors (D10).</summary>
+/// <summary>Built-in philosophy and literature quotes from public-domain editions (D10, FR-INSP-16, FR-INSP-17).</summary>
 public sealed class EmbeddedQuoteSource : IQuoteSource
 {
     private readonly Lazy<IReadOnlyList<Quote>> _quotes = new(() =>
         EmbeddedJson.Load<QuoteFile>("Journal.Content.quotes.json").Quotes
-            .Select(q => new Quote(q.Text, q.Author, q.Work, q.Tradition) { Source = q.Source }).ToList());
+            .Select(q => new Quote(q.Text, q.Author, q.Work, q.Tradition)
+            {
+                Source = q.Source,
+                Category = string.IsNullOrWhiteSpace(q.Category) ? QuoteCategories.Philosophy : q.Category,
+            }).ToList());
 
     public string Name => SourceNames.BuiltIn;
     public IReadOnlyList<Quote> All() => _quotes.Value;
 
     private sealed record QuoteFile(int FormatVersion, string Source, List<QuoteRow> Quotes);
-    private sealed record QuoteRow(string Text, string Author, string? Work, string Tradition, string? Source);
+    private sealed record QuoteRow(string Text, string Author, string? Work, string Tradition, string? Source, string? Category);
 }
 
 internal static class EmbeddedJson

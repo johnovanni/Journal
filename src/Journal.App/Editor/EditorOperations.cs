@@ -16,15 +16,37 @@ public static class EditorOperations
     /// Inserts a block (image or file) at the caret on its own line. A caret in the middle of a paragraph
     /// splits the paragraph around the block (FR-IMG-03).
     /// </summary>
-    public static void InsertBlockAtCaret(RichTextBox box, Block block)
+    public static void InsertBlockAtCaret(RichTextBox box, Block block) => InsertBlocksAtCaret(box, [block]);
+
+    /// <summary>
+    /// Inserts blocks at the caret, in order, as <see cref="InsertBlockAtCaret"/> does for one block
+    /// (also used to paste journal content, ISS-010). The caret ends up after the last block.
+    /// </summary>
+    public static void InsertBlocksAtCaret(RichTextBox box, IReadOnlyList<Block> blocks)
     {
+        if (blocks.Count == 0) return;
         var doc = box.Document;
         var caret = box.Selection.IsEmpty ? box.CaretPosition : box.Selection.End;
         var paragraph = caret.Paragraph;
+        var block = blocks[^1];
+
+        void InsertAllBefore(BlockCollection siblings, Block anchor)
+        {
+            foreach (var b in blocks) siblings.InsertBefore(anchor, b);
+        }
+
+        void InsertAllAfter(BlockCollection siblings, Block anchor)
+        {
+            foreach (var b in blocks)
+            {
+                siblings.InsertAfter(anchor, b);
+                anchor = b;
+            }
+        }
 
         if (paragraph is null)
         {
-            doc.Blocks.Add(block);
+            foreach (var b in blocks) doc.Blocks.Add(b);
             doc.Blocks.Add(new WpfParagraph());
         }
         else
@@ -35,11 +57,11 @@ public static class EditorOperations
             var siblings = container.SiblingBlocks!;
             if (atStart && !IsEmpty(paragraph))
             {
-                siblings.InsertBefore(container, block);
+                InsertAllBefore(siblings, container);
             }
             else if (atEnd || IsEmpty(paragraph))
             {
-                siblings.InsertAfter(container, block);
+                InsertAllAfter(siblings, container);
                 if (block.NextBlock is null) siblings.Add(new WpfParagraph());
             }
             else
@@ -55,7 +77,7 @@ public static class EditorOperations
                     ms.Position = 0;
                     new TextRange(tailParagraph.ContentStart, tailParagraph.ContentEnd).Load(ms, DataFormats.XamlPackage);
                 }
-                siblings.InsertAfter(container, block);
+                InsertAllAfter(siblings, container);
                 siblings.InsertAfter(block, tailParagraph);
             }
         }

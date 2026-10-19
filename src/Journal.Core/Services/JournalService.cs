@@ -222,4 +222,14 @@ public sealed class JournalService
     public IReadOnlyList<string> AllTags() => Catalog.AllTags();
 
     public bool HasEntry(DateOnly date) => Catalog.Contains(date);
+
+    public IReadOnlyDictionary<DateOnly, Mood> Moods(DateOnly from, DateOnly to) => Catalog.MoodsInRange(from, to);
+
+    /// <summary>Mood counts for the last 30 days and the last 12 months, both ending today (FR-MOOD-04).</summary>
+    public MoodSummary GetMoodSummary()
+    {
+        var today = _clock.Today;
+        var (days30, months12) = MoodSummary.PeriodStarts(today);
+        return new MoodSummary(Catalog.CountMoods(days30, today), Catalog.CountMoods(months12, today));
+    }
 }

@@ -26,7 +26,7 @@ A private, single-user desktop journal and planner for Windows. Each calendar da
 | D7 | **File-per-entry vault** (`entries/*.jent`, `blobs/*.jblob`) plus an encrypted **catalog** used for the calendar and search | Small writes per save, works well inside a OneDrive/backup folder, a corrupted file affects one day only. |
 | D8 | **In-memory search index** built from the catalog on unlock | Encrypted data can't be indexed on disk in plaintext. A decade of entries is a few MB of text, so in-memory search is instant. |
 | D9 | **Verse and quote are stored with the entry** once the entry is first saved | Past days keep showing the verse/quote you saw that day, even if you later change the settings. |
-| D10 | **Built-in public-domain content**: verses from the **World English Bible (WEB)**, a modern-English translation, and quotes from classical authors (Marcus Aurelius, Seneca, Epictetus, Confucius, Lao Tzu, Plato, Aristotle, Pascal, etc.), plus user-importable lists | WEB reads as modern English and is public domain, so it can ship inside the app and work offline. The NRSV (the text of the *New Oxford Annotated Bible*), NIV and ESV are copyrighted and cannot be bundled; you can bring verses from a translation you own in through the import feature (§8.2). |
+| D10 | **Built-in public-domain content**: verses from the **World English Bible (WEB)**, a modern-English translation, and quotes from classical authors (Marcus Aurelius, Seneca, Epictetus, Confucius, Lao Tzu, Plato, Aristotle, Pascal, etc.) and from world literature (Shakespeare, Tagore, Rumi, Dickinson, Machado de Assis, Olive Schreiner, etc.; ISS-011), plus user-importable lists | WEB reads as modern English and is public domain, so it can ship inside the app and work offline. The NRSV (the text of the *New Oxford Annotated Bible*), NIV and ESV are copyrighted and cannot be bundled; you can bring verses from a translation you own in through the import feature (§8.2). |
 | D11 | **Any date can have an entry, including future dates** | The journal doubles as a planner: write plans and checklists on a future day, then tick them off. |
 
 ## 3. Architecture overview
@@ -183,6 +183,8 @@ classDiagram
         +string Author
         +string? Work
         +string Tradition
+        +string? Source
+        +string Category
     }
     class JournalDocument {
         +IList~DocBlock~ Blocks
@@ -661,6 +663,7 @@ classDiagram
         +ISet~string~ VerseBooks
         +string QuoteSource
         +ISet~string~ Traditions
+        +ISet~string~ HiddenCategories
         +SelectionMode Mode
     }
 
@@ -699,20 +702,27 @@ classDiagram
 
 Matching is case- and accent-insensitive, terms are combined with AND, and a term matches word prefixes (`gard` finds *garden*). Results are newest first, one row per tab that matched, with a highlighted snippet and an icon for where it matched (text, caption, file, tag). Clicking a result opens that day and tab. The search box also offers tag autocomplete, and clicking a tag chip anywhere runs `tag:<name>`.
 
+### 8.1a Day mood (ISS-013)
+
+Each day up to today can be marked sad, neutral or happy with three faces next to the day's heading. The mood is part of the encrypted entry (`JournalEntry.Mood`) and is copied into the encrypted catalog (`CatalogEntry.Mood`), so the calendar can tint days (light red for sad, light green for happy, with a small face on every marked day) and the summary under the calendar can count the last 30 days and the last 12 months without opening every entry. Choosing a face saves at once. Moods aren't part of search.
+
 ### 8.2 Daily verse and quote options
+
+The quote card's label is the quote's category in capitals ("PHILOSOPHY", "LITERATURE"). Categories are data: each quote in `quotes.json` names its category, and the label, Settings and filters are built from the categories present (FR-INSP-17). The settings store the categories turned *off*, so a category added to the content later is shown until the user turns it off. Philosophy and literature quotes alternate in `quotes.json`, so the day-of-year mode, which only reaches the first 366 quotes, shows both.
 
 | Setting | Options | Default |
 |---|---|---|
 | Show Bible verse | on / off | on |
 | Verse source | Built-in World English Bible (≥ 366 verses) · imported list | Built-in WEB |
 | Verse books filter | any subset of books (e.g. Psalms, Proverbs, Gospels) | all |
-| Show philosophy quote | on / off | on |
-| Quote source | Built-in classics (≥ 366 quotes) · imported list | Built-in |
-| Traditions filter | Stoic, Greek, Chinese, Christian thinkers, Enlightenment, Existentialist… | all |
+| Show a quote | on / off | on |
+| Quote source | Built-in quotes (394 philosophy, 395 literature) · imported list | Built-in |
+| Quote categories | one section per category in the content, Philosophy first (Philosophy, Literature; a future category such as Science appears with no code change), each with an *Include* tick box | all ticked |
+| Traditions filter | per category: Stoic, Greek, Chinese, … for philosophy; English, Persian, Chinese, Latin American, African, … for literature. Saved as "Category/Tradition"; a category with none ticked keeps all its quotes | all |
 | Selection | Same each year by day-of-year · Random per day (stable for that date) | Day-of-year |
 | Per-day | **Shuffle** button for a new verse/quote today; it is saved with the entry | |
 
-Import format: a JSON or CSV file (`reference,text,translation` for verses; `text,author,work,tradition` for quotes). Use this to bring in verses from a copyrighted translation you own, such as the NRSV from the *New Oxford Annotated Bible*. Imported lists are stored inside the encrypted vault.
+Import format: a JSON or CSV file (`reference,text,translation` for verses; `text,author,work,tradition,category` for quotes; a quote without a category is labelled "Quote"). Use this to bring in verses from a copyrighted translation you own, such as the NRSV from the *New Oxford Annotated Bible*. Imported lists are stored inside the encrypted vault.
 
 ## 9. Presentation layer
 

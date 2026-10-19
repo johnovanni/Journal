@@ -3,6 +3,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <!-- App version, shown in the file properties of Journal.exe. 1.1.0: ISS-010, 011, 013-016. -->
+    <Version>1.1.0</Version>
     <WindowsTfm>net10.0-windows10.0.19041.0</WindowsTfm>
     <SupportedOSPlatformVersion Condition="'$(UseWindowsTfm)' == 'true'">10.0.19041.0</SupportedOSPlatformVersion>
   </PropertyGroup>

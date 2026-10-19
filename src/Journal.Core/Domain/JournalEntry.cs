@@ -18,6 +18,21 @@ public sealed record Verse(string Reference, string Text, string Translation)
 public sealed record Quote(string Text, string Author, string? Work, string Tradition)
 {
     public string? Source { get; init; }
+
+    /// <summary>
+    /// The kind of quote, shown as the card label (FR-INSP-17). Categories come from the content, not the code.
+    /// Days saved before categories existed only had philosophy quotes, so that is the default.
+    /// </summary>
+    public string Category { get; init; } = QuoteCategories.Philosophy;
+}
+
+/// <summary>Well-known quote categories. Any other name in the content is a category too (FR-INSP-17).</summary>
+public static class QuoteCategories
+{
+    public const string Philosophy = "Philosophy";
+    public const string Literature = "Literature";
+    /// <summary>Category for imported quotes whose file doesn't name one.</summary>
+    public const string Imported = "Quote";
 }
 
 /// <summary>The verse and quote shown on a day. Either may be absent when turned off.</summary>
@@ -30,6 +45,20 @@ public sealed class DuplicateTagException(Tag tag)
     : InvalidOperationException($"This entry already has a tab for the tag \"{tag.Name}\".")
 {
     public Tag Tag { get; } = tag;
+}
+
+/// <summary>How the day felt, chosen with a face on the day's heading (FR-MOOD-01).</summary>
+public enum Mood { None, Sad, Neutral, Happy }
+
+/// <summary>Sad, neutral and happy days in a period (FR-MOOD-04). Days without a mood aren't counted.</summary>
+public sealed record MoodCounts(int Sad, int Neutral, int Happy);
+
+/// <summary>Mood counts for the last 30 days and the last 12 months, both ending today (FR-MOOD-04).</summary>
+public sealed record MoodSummary(MoodCounts Last30Days, MoodCounts Last12Months)
+{
+    /// <summary>The first day of each period that ends on <paramref name="today"/>.</summary>
+    public static (DateOnly Last30Days, DateOnly Last12Months) PeriodStarts(DateOnly today) =>
+        (today.AddDays(-29), today.AddYears(-1).AddDays(1));
 }
 
 /// <summary>One tab of an entry. The first tab is untagged and titled "Journal".</summary>
@@ -68,6 +97,8 @@ public sealed class JournalEntry
     public DailyInspiration Inspiration { get; set; } = DailyInspiration.None;
     /// <summary>True once the verse/quote has been stored with the entry (FR-INSP-10).</summary>
     public bool IsInspirationPinned { get; set; }
+    /// <summary>The day's mood, or <see cref="Mood.None"/> (FR-MOOD-01). A mood alone keeps the entry.</summary>
+    public Mood Mood { get; private set; }
 
     public IReadOnlyList<EntryTab> Tabs => _tabs;
     public IReadOnlyCollection<Tag> ExtraTags => _extraTags;
@@ -89,9 +120,9 @@ public sealed class JournalEntry
 
     /// <summary>Rebuilds an entry from storage, normalizing tab order and invariants.</summary>
     public static JournalEntry Restore(DateOnly date, DateTimeOffset createdUtc, DateTimeOffset modifiedUtc,
-        IEnumerable<EntryTab> tabs, IEnumerable<Tag> extraTags, DailyInspiration inspiration, bool inspirationPinned)
+        IEnumerable<EntryTab> tabs, IEnumerable<Tag> extraTags, DailyInspiration inspiration, bool inspirationPinned, Mood mood = Mood.None)
     {
-        var entry = new JournalEntry(date, createdUtc) { ModifiedUtc = modifiedUtc, Inspiration = inspiration, IsInspirationPinned = inspirationPinned };
+        var entry = new JournalEntry(date, createdUtc) { ModifiedUtc = modifiedUtc, Inspiration = inspiration, IsInspirationPinned = inspirationPinned, Mood = mood };
         var list = tabs.ToList();
         var defaultTab = list.FirstOrDefault(t => t.Tag is null) ?? new EntryTab(null);
         entry._tabs.Add(defaultTab);
@@ -161,7 +192,18 @@ public sealed class JournalEntry
     public IReadOnlyList<Tag> AllTags() =>
         _tabs.Where(t => t.Tag is not null).Select(t => t.Tag!).Concat(_extraTags.OrderBy(t => t.Normalized)).ToList();
 
-    public bool IsEmpty() => _extraTags.Count == 0 && _tabs.All(t => t.Document.IsEmpty());
+    /// <summary>
+    /// Sets or clears the day's mood. Future days can't have a mood (owner, ISS-013), so this throws for a
+    /// date after <paramref name="today"/>.
+    /// </summary>
+    public void SetMood(Mood mood, DateOnly today)
+    {
+        if (mood != Mood.None && Date > today)
+            throw new InvalidOperationException("A mood can only be set for today or an earlier day.");
+        Mood = mood;
+    }
+
+    public bool IsEmpty() => _extraTags.Count == 0 && Mood == Mood.None && _tabs.All(t => t.Document.IsEmpty());
 
     public IEnumerable<BlobRef> ReferencedBlobs() => _tabs.SelectMany(t => t.Document.ReferencedBlobs());
 

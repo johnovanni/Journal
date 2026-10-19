@@ -67,7 +67,7 @@ public class LogoTests
         public VaultSession Session => session;
         public string VaultFolder => @"C:\vault";
         public IReadOnlyList<string> AvailableBooks => [];
-        public IReadOnlyList<string> AvailableTraditions => [];
+        public IReadOnlyList<Journal.Core.Inspiration.QuoteCategory> QuoteCategories => [];
         public int ImportedVerseCount => 0;
         public int ImportedQuoteCount => 0;
         public Task<string> ImportVersesAsync(string path) => Task.FromResult("");

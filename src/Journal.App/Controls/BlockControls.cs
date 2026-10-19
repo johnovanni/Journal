@@ -261,3 +261,37 @@ public sealed class SimpleCommand(Action execute) : ICommand
     public bool CanExecute(object? parameter) => true;
     public void Execute(object? parameter) => execute();
 }
+
+/// <summary>
+/// The checkbox at the start of a checklist item. A ticked item is struck through on the whole paragraph
+/// (display only, FR-EDT-09), and WPF draws that line across the checkbox's slot as well. This checkbox
+/// paints the editor's background under itself and the gap before the text, so the line only shows
+/// through the item's text (ISS-014).
+/// </summary>
+public sealed class ChecklistCheckBox : CheckBox
+{
+    /// <summary>Space between the checkbox and the item's text, in DIPs.</summary>
+    public const double Gap = 6;
+
+    protected override Size MeasureOverride(Size constraint)
+    {
+        var size = base.MeasureOverride(new Size(Math.Max(0, constraint.Width - Gap), constraint.Height));
+        return new Size(size.Width + Gap, size.Height);
+    }
+
+    protected override Size ArrangeOverride(Size arrangeBounds)
+    {
+        base.ArrangeOverride(new Size(Math.Max(0, arrangeBounds.Width - Gap), arrangeBounds.Height));
+        return arrangeBounds;
+    }
+
+    protected override void OnRender(DrawingContext dc) => dc.DrawRectangle(Cover(), null, new Rect(RenderSize));
+
+    /// <summary>The background of the editor this checkbox is in.</summary>
+    private Brush Cover()
+    {
+        for (DependencyObject? d = VisualTreeHelper.GetParent(this); d is not null; d = VisualTreeHelper.GetParent(d))
+            if (d is Control { Background: SolidColorBrush { Color.A: 255 } bg }) return bg;
+        return Brushes.White;
+    }
+}

@@ -219,8 +219,11 @@ public static class TestData
     public static IReadOnlyList<Verse> Verses(int n = 400) =>
         Enumerable.Range(1, n).Select(i => new Verse($"{(i % 3 == 0 ? "Psalm" : "Proverbs")} {i}:1", $"Verse text {i}", "WEB")).ToList();
 
+    /// <summary>Every third quote is Literature (tradition "English"); the rest are Philosophy, Stoic or Greek.</summary>
     public static IReadOnlyList<Quote> Quotes(int n = 400) =>
-        Enumerable.Range(1, n).Select(i => new Quote($"Quote text {i}", $"Author {i % 25}", "Work", i % 2 == 0 ? "Stoic" : "Greek")).ToList();
+        Enumerable.Range(1, n).Select(i => i % 3 == 0
+            ? new Quote($"Quote text {i}", $"Author {i % 25}", "Work", "English") { Category = QuoteCategories.Literature }
+            : new Quote($"Quote text {i}", $"Author {i % 25}", "Work", i % 2 == 0 ? "Stoic" : "Greek")).ToList();
 
     public static DailyInspirationService Inspiration(IReadOnlyList<Verse>? imported = null) => new(
         [new ListVerseSource(SourceNames.BuiltIn, () => Verses()), new ListVerseSource(SourceNames.Imported, () => imported ?? [])],

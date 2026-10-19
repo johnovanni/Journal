@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Journal.App.Services;
+using Journal.Core.Domain;
 using Journal.Core.Inspiration;
 using Journal.Core.Security;
 using Journal.Core.Settings;
@@ -17,13 +18,25 @@ public sealed partial class CheckItem(string name, bool isChecked) : ObservableO
 
 public sealed record AutoLockOption(int Minutes, string Label);
 
+/// <summary>One quote category in Settings: whether it is included, and which of its traditions (ISS-015).</summary>
+public sealed partial class QuoteCategorySection(string name, bool isIncluded, IEnumerable<CheckItem> traditions) : ObservableObject
+{
+    public string Name { get; } = name;
+    public string Heading => Name.ToUpperInvariant();
+    public string IncludeLabel => $"Include {Name.ToLowerInvariant()} quotes";
+    [ObservableProperty] private bool _isIncluded = isIncluded;
+    /// <summary>This category's traditions, alphabetical.</summary>
+    public IReadOnlyList<CheckItem> Traditions { get; } = [.. traditions.OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)];
+}
+
 /// <summary>Actions the settings window needs from the running app.</summary>
 public interface ISettingsHost
 {
     VaultSession Session { get; }
     string VaultFolder { get; }
     IReadOnlyList<string> AvailableBooks { get; }
-    IReadOnlyList<string> AvailableTraditions { get; }
+    /// <summary>Built-in quote categories with their traditions (FR-INSP-17).</summary>
+    IReadOnlyList<QuoteCategory> QuoteCategories { get; }
     int ImportedVerseCount { get; }
     int ImportedQuoteCount { get; }
     Task<string> ImportVersesAsync(string path);
@@ -33,7 +46,7 @@ public interface ISettingsHost
     Task ApplySettingsAsync(AppSettings settings);
 }
 
-/// <summary>Settings window (FR-SET-01, FR-SEC-13, FR-SEC-18, FR-CAL-02, FR-INSP-05..11).</summary>
+/// <summary>Settings window (FR-SET-01, FR-SEC-13, FR-SEC-18, FR-CAL-02, FR-INSP-05..11, FR-INSP-17).</summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsHost _host;
@@ -61,7 +74,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _importedQuotesText = "";
 
     public ObservableCollection<CheckItem> Books { get; } = [];
-    public ObservableCollection<CheckItem> Traditions { get; } = [];
+    /// <summary>One tick box per quote category, all ticked unless turned off (FR-INSP-17).</summary>
+    /// <summary>
+    /// One section per quote category: Philosophy first, then the rest alphabetically. Each has its own
+    /// tick box and its own traditions (ISS-015).
+    /// </summary>
+    public ObservableCollection<QuoteCategorySection> CategorySections { get; } = [];
+    private readonly Dictionary<string, CheckItem> _traditionItems = new(StringComparer.OrdinalIgnoreCase);
     public ObservableCollection<string> HelloMachines { get; } = [];
     public string ThisMachine => _host.Session.MachineName;
 
@@ -80,7 +99,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         _useImportedQuotes = insp.QuoteSource == SourceNames.Imported;
         _randomPerDay = insp.Mode == SelectionMode.RandomPerDay;
         foreach (var b in host.AvailableBooks) Books.Add(new CheckItem(b, insp.VerseBooks.Contains(b, StringComparer.OrdinalIgnoreCase)));
-        foreach (var t in host.AvailableTraditions) Traditions.Add(new CheckItem(t, insp.Traditions.Contains(t, StringComparer.OrdinalIgnoreCase)));
+        var chosen = insp.Traditions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in host.QuoteCategories
+                     .OrderBy(c => c.Name.Equals(QuoteCategories.Philosophy, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                     .ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            // A tradition saved before ISS-015 has no category and counts for every category that has it.
+            var traditions = c.Traditions.Select(t => new CheckItem(t, chosen.Contains(TraditionChoice.Make(c.Name, t)) || chosen.Contains(t)));
+            CategorySections.Add(new QuoteCategorySection(c.Name, !insp.HiddenCategories.Contains(c.Name, StringComparer.OrdinalIgnoreCase), traditions));
+        }
         RefreshMachines();
         RefreshImportCounts();
     }
@@ -109,7 +136,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             VerseSource = UseImportedVerses ? SourceNames.Imported : SourceNames.BuiltIn,
             QuoteSource = UseImportedQuotes ? SourceNames.Imported : SourceNames.BuiltIn,
             VerseBooks = Books.Where(b => b.IsChecked).Select(b => b.Name).ToList(),
-            Traditions = Traditions.Where(t => t.IsChecked).Select(t => t.Name).ToList(),
+            Traditions = CategorySections.SelectMany(c => c.Traditions.Where(t => t.IsChecked).Select(t => TraditionChoice.Make(c.Name, t.Name))).ToList(),
+            HiddenCategories = CategorySections.Where(c => !c.IsIncluded).Select(c => c.Name).ToList(),
             Mode = RandomPerDay ? SelectionMode.RandomPerDay : SelectionMode.DayOfYear,
         };
         return _settings;

@@ -88,6 +88,16 @@ public static class AppThread
         }
         return null;
     }
+
+    public static IEnumerable<T> FindChildren<T>(DependencyObject root, Func<T, bool>? match = null) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T t && (match is null || match(t))) yield return t;
+            foreach (var found in FindChildren(child, match)) yield return found;
+        }
+    }
 }
 
 public class LayoutTests
@@ -149,6 +159,38 @@ public class LayoutTests
             Assert.True(verseScroller!.ScrollableHeight > 0, "the longest verse should scroll inside the card");
             var copyVerse = AppThread.FindChild<Button>(card, b => System.Windows.Automation.AutomationProperties.GetName(b) == "Copy verse");
             Assert.True(copyVerse is { IsVisible: true }, "the Copy button stays visible");
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact(DisplayName = "TC-MOOD-06 Face buttons fit beside the heading and the counts show under the calendar, at the smallest window size")]
+    public void MoodLayout() => AppThread.Run(async () =>
+    {
+        var (window, content) = await OpenLongestAsync(1000, 650);
+        try
+        {
+            var vm = (MainViewModel)window.DataContext;
+            var entry = vm.CurrentEntry!;
+            await entry.ChooseMoodCommand.ExecuteAsync(entry.MoodChoices.Single(c => c.Mood == Mood.Happy));
+            await AppThread.Settle();
+            window.UpdateLayout();
+
+            // The three face buttons are visible, on one line, to the right of the heading and clear of it.
+            var heading = AppThread.FindChild<TextBlock>(window, t => t.Text == entry.Heading)!;
+            var faces = AppThread.FindChildren<Button>(window, b => b.Style == window.FindResource("MoodButton")).ToList();
+            Assert.Equal(3, faces.Count);
+            var headingRight = heading.TranslatePoint(new Point(heading.ActualWidth, 0), content).X;
+            foreach (var f in faces)
+            {
+                Assert.True(f.IsVisible && f.ActualWidth > 0);
+                Assert.True(f.TranslatePoint(new Point(), content).X >= headingRight, "a face button overlaps the heading");
+            }
+
+            // The counts card shows the happy day.
+            var counts = AppThread.FindChildren<MoodCount>(window).ToList();
+            Assert.Equal(6, counts.Count);
+            Assert.Equal("1", counts.Single(c => c.Mood == Mood.Happy && Grid.GetRow(c) == 1).Text);
+            Assert.All(counts, c => Assert.True(c.IsVisible));
         }
         finally { window.Close(); }
     });

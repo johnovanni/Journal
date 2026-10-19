@@ -26,6 +26,11 @@ public sealed record InspirationSettings
     public IReadOnlySet<string> VerseBooks { get; init; } = new HashSet<string>();
     public string QuoteSource { get; init; } = SourceNames.BuiltIn;
     public IReadOnlySet<string> Traditions { get; init; } = new HashSet<string>();
+    /// <summary>
+    /// Quote categories the user turned off (FR-INSP-17). Stored as the ones turned off, so a category
+    /// added to the content later is shown until the user turns it off.
+    /// </summary>
+    public IReadOnlySet<string> HiddenCategories { get; init; } = new HashSet<string>();
     public SelectionMode Mode { get; init; } = SelectionMode.DayOfYear;
 }
 
@@ -62,6 +67,25 @@ public sealed class SeededRandomStrategy : ISelectionStrategy
     }
 }
 
+/// <summary>A quote category and the traditions its quotes come from.</summary>
+public sealed record QuoteCategory(string Name, IReadOnlyList<string> Traditions);
+
+/// <summary>A ticked tradition saved with its category, e.g. "Philosophy/Chinese" (ISS-015).</summary>
+public static class TraditionChoice
+{
+    public const char Separator = '/';
+
+    public static string Make(string category, string tradition) => $"{category}{Separator}{tradition}";
+
+    public static bool TryParse(string choice, out string category, out string tradition)
+    {
+        var i = choice.IndexOf(Separator);
+        category = i > 0 ? choice[..i] : "";
+        tradition = i > 0 ? choice[(i + 1)..] : choice;
+        return i > 0 && tradition.Length > 0;
+    }
+}
+
 public sealed record InspirationResult(DailyInspiration Inspiration, IReadOnlyList<string> Warnings);
 
 /// <summary>Chooses the verse and quote for a day from the configured sources (FR-INSP-*).</summary>
@@ -81,6 +105,14 @@ public sealed class DailyInspirationService
 
     public IReadOnlyList<string> AvailableTraditions() =>
         Quotes(SourceNames.BuiltIn).Select(q => q.Tradition).Distinct().Order().ToList();
+
+    /// <summary>The built-in quote categories, each with its traditions (FR-INSP-17).</summary>
+    public IReadOnlyList<QuoteCategory> AvailableCategories() =>
+        Quotes(SourceNames.BuiltIn)
+            .GroupBy(q => q.Category, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new QuoteCategory(g.Key, g.Select(q => q.Tradition).Distinct().Order().ToList()))
+            .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     public InspirationResult For(DateOnly date, InspirationSettings s, Guid vaultId)
     {
@@ -195,11 +227,46 @@ public sealed class DailyInspirationService
             warnings.Add("The imported quote list is empty, so the built-in quotes are used.");
             all = Quotes(SourceNames.BuiltIn);
         }
+        if (s.HiddenCategories.Count > 0)
+        {
+            var shown = all.Where(q => !s.HiddenCategories.Contains(q.Category, StringComparer.OrdinalIgnoreCase)).ToList();
+            if (shown.Count > 0) all = shown;
+            else warnings.Add("All quote categories are turned off, so all quotes are used.");
+        }
         if (s.Traditions.Count == 0) return all;
-        var filtered = all.Where(q => s.Traditions.Contains(q.Tradition, StringComparer.OrdinalIgnoreCase)).ToList();
+        var filtered = FilterByTradition(all, s.Traditions);
         if (filtered.Count > 0) return filtered;
         warnings.Add("No quotes match the chosen traditions, so all quotes are used.");
         return all;
+    }
+
+    /// <summary>
+    /// Applies the tradition choices per category (FR-INSP-06, ISS-015): a category with no ticked tradition
+    /// keeps all its quotes; otherwise only its ticked traditions. Choices are "Category/Tradition"; a bare
+    /// tradition (settings saved before ISS-015) applies to every category that has that tradition.
+    /// </summary>
+    private static List<Quote> FilterByTradition(IReadOnlyList<Quote> all, IReadOnlySet<string> choices)
+    {
+        var ticked = new HashSet<(string, string)>(StringTupleComparer.Instance);
+        var bare = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in choices)
+        {
+            if (TraditionChoice.TryParse(c, out var category, out var tradition)) ticked.Add((category, tradition));
+            else bare.Add(c);
+        }
+        foreach (var q in all)
+            if (bare.Contains(q.Tradition)) ticked.Add((q.Category, q.Tradition));
+        var filteredCategories = ticked.Select(t => t.Item1).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return all.Where(q => !filteredCategories.Contains(q.Category) || ticked.Contains((q.Category, q.Tradition))).ToList();
+    }
+
+    private sealed class StringTupleComparer : IEqualityComparer<(string, string)>
+    {
+        public static readonly StringTupleComparer Instance = new();
+        public bool Equals((string, string) x, (string, string) y) =>
+            StringComparer.OrdinalIgnoreCase.Equals(x.Item1, y.Item1) && StringComparer.OrdinalIgnoreCase.Equals(x.Item2, y.Item2);
+        public int GetHashCode((string, string) t) =>
+            HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(t.Item1), StringComparer.OrdinalIgnoreCase.GetHashCode(t.Item2));
     }
 
     private IReadOnlyList<Verse> Verses(string name) =>
