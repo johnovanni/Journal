@@ -40,6 +40,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-014 | A ticked checklist item's strikethrough also runs through its checkbox | Bug | Low | FR-EDT-09 | TC-EDT-11 (extended) | Verified |
 | ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Verified |
 | ISS-016 | Closing the window doesn't exit; the app keeps running in the background | Bug | High | FR-ENT-05, FR-ATT-06, FR-SEC-19; new FR-SEC-21 | None (gap: no test closes the real main window); new TC-SEC-26 | Verified |
+| ISS-017 | Show the app's version number | Change | Low | New FR-UI-02 (proposed) | New TC-UI-03 (proposed) | Open |
 
 ---
 
@@ -811,4 +812,43 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 1. Open Journal, don't type anything, and click the X. The window closes at once, and Journal leaves Task Manager within a few seconds.
 2. Open it again (it starts normally), type something, and click the X. It closes in one click, and the text is there next time.
 3. Lock and unlock with the Lock button. That still works as before.
+
+---
+
+## ISS-017: Show the app's version number
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19 |
+| **Type / Severity** | Change / Low |
+| **Area** | Settings window, unlock window |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | New **FR-UI-02**: the app shows its version number. |
+| **Tests to change** | New **TC-UI-03**. |
+| **Status** | Open. Not approved; no work until the owner approves and answers the questions below. |
+
+**Description.** The owner wants the app to show its version number, so it's clear which release is installed (for example 1.1.0 from the qapow.com download).
+
+**Current state (checked 2026-10-19).**
+- Since release 1.1.0, the version is set in one place (`Directory.Build.props`, `<Version>`) and is built into `Journal.exe`. Windows shows it only under *Properties → Details* of the file.
+- The app itself doesn't show it anywhere.
+
+**Proposed change.**
+1. **Settings → General:** an *About* line at the bottom, for example "Journal 1.1.0". It is read from the running program, so it always matches the build and needs no change per release.
+2. **Unlock window:** the same version in small grey text at the bottom, so it can be checked without unlocking.
+3. Nothing in the main window, to keep it uncluttered.
+4. **Requirement FR-UI-02:** the version shown is the one built into the program, without the build's commit suffix. The program's product version is currently `1.1.0+b7c09fff204c6f333fa091a6b97f5031186e4861` (checked 2026-10-19); the app shows `1.1.0`.
+5. **Where the change goes:**
+   - a small helper that reads the version from the program;
+   - a version text in `SettingsViewModel` and `UnlockViewModel` (`ViewModels/SecurityViewModels.cs`);
+   - one line each in `Views/SettingsWindow.xaml` (General tab) and `Views/UnlockWindow.xaml`.
+   No change to the core library or the vault.
+
+**Questions for the owner.**
+1. **Where:** are Settings → General and the unlock screen the right places? Alternatives: the main window's status bar (bottom right, next to "Locks after …") or the window title ("Journal 1.1.0").
+2. **More detail:** show only the number, or also the release date and a link to the release notes on GitHub?
+
+**Proposed tests.**
+- **TC-UI-03 (automated):** the text in Settings and on the unlock window equals the version built into the program (1.1.0 today), with no "+…" suffix.
+- **TC-UI-03 (manual):** after installing a release zip, the version shown matches the release's name on GitHub.
 
