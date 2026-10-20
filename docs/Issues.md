@@ -41,6 +41,11 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Verified |
 | ISS-016 | Closing the window doesn't exit; the app keeps running in the background | Bug | High | FR-ENT-05, FR-ATT-06, FR-SEC-19; new FR-SEC-21 | None (gap: no test closes the real main window); new TC-SEC-26 | Verified |
 | ISS-017 | Show the app's version number | Change | Low | New FR-UI-02 (proposed) | New TC-UI-03 (proposed) | Open |
+| ISS-018 | Refactor: split AppController so startup, locking and exiting can be tested | Refactor | Medium | None (behaviour unchanged); protects FR-SEC-13…21, FR-ENT-05 | New tests for locking, auto-lock and exit; all existing tests must still pass | Open |
+| ISS-019 | Refactor: replace the editor's global static events and image loader with per-editor wiring | Refactor | Low | None (behaviour unchanged); protects FR-IMG-*, FR-ATT-* | TC-IMG-*, TC-ATT-* still pass; new test with two editors | Open |
+| ISS-020 | Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor | Refactor | Low | None (behaviour unchanged); protects FR-EDT-11 | TC-EDT-13 and the mapper tests still pass | Open |
+| ISS-021 | Refactor: turn the static EditorOperations into an editor-document object | Refactor | Low | None (behaviour unchanged); protects FR-EDT-*, FR-IMG-03 | Editor tests still pass | Open |
+| ISS-022 | Housekeeping: shared test fake for Settings, remove an unused package, split crowded files | Refactor | Low | None | All tests still pass | Open |
 
 ---
 
@@ -851,4 +856,165 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 **Proposed tests.**
 - **TC-UI-03 (automated):** the text in Settings and on the unlock window equals the version built into the program (1.1.0 today), with no "+…" suffix.
 - **TC-UI-03 (manual):** after installing a release zip, the version shown matches the release's name on GitHub.
+
+---
+
+## Code review, 2026-10-19 (background for ISS-018 to ISS-022)
+
+The owner asked whether Journal would benefit from refactoring and whether it is written in an object-oriented way.
+
+**Finding:** it is mostly well organised.
+- The core library (domain, storage, search, security) has no Windows UI code.
+- Objects guard their own rules; for example, `JournalEntry` keeps its tabs private and enforces the tab rules.
+- There are 22 interfaces at the boundaries (storage, keys, clock, dialogs), each with real and fake implementations, so 199 automated tests run without a real vault or Windows Hello.
+
+No rewrite is needed. Five targeted changes would make it easier to change safely; they are logged below in priority order.
+
+**Rule for every refactoring:** the app must behave exactly as before. All existing tests must pass unchanged, except where a test only reached into code that moved. Each refactoring adds tests for anything that wasn't testable before.
+
+---
+
+## ISS-018: Refactor: split AppController so startup, locking and exiting can be tested
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19, from Claude's code review requested by the owner |
+| **Type / Severity** | Refactor / Medium |
+| **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
+| **Status** | Open. Not approved; no work until the owner approves. |
+| **Area** | `src/Journal.App/Services/AppController.cs` (409 lines) |
+
+**Problem.**
+- `AppController` does many unrelated jobs:
+  - startup and the setup and unlock windows;
+  - opening the journal;
+  - auto-lock and its idle timer;
+  - Windows lock and sleep events;
+  - locking and exiting;
+  - every action of the Settings window (it implements all 11 members of `ISettingsHost`: imports, moving the journal, backup, applying settings).
+- It uses `Application.Current` and real system events directly.
+- No test exercises it (0 test files mention it). The close bug ISS-016 lived here, and only the part split out then (`MainWindowCloser`) is tested.
+
+**Proposed change.**
+1. **`SettingsActions`:** a new class that implements `ISettingsHost` (imports, moving the journal, backup, applying settings). It is given the session and services it needs.
+2. **`LockCoordinator`:** a new class that handles auto-lock, the idle tick, Windows lock and sleep events, locking, and the exit sequence (with `MainWindowCloser`). It is given a clock, a dispatcher or scheduler, and a "shut down" action, so tests can drive it.
+3. **`AppController`:** keeps only the window flow (setup → unlock → main window → back to unlock) and wires the pieces together.
+
+**Proposed tests.**
+- `LockCoordinator`:
+  - idle for the timeout, then it locks;
+  - activity resets the timer;
+  - Windows lock and sleep lock it;
+  - locking twice at once locks once;
+  - exit while a lock is running still shuts down.
+- `SettingsActions`:
+  - importing updates the counts;
+  - applying settings changes the auto-lock timeout and the week start;
+  - moving the journal saves first.
+- All existing tests pass.
+
+---
+
+## ISS-019: Refactor: replace the editor's global static events and image loader with per-editor wiring
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19, from Claude's code review requested by the owner |
+| **Type / Severity** | Refactor / Low |
+| **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
+| **Status** | Open. Not approved; no work until the owner approves. |
+| **Area** | `src/Journal.App/Controls/BlockControls.cs`, `JournalEditor.xaml.cs`, `AppController.cs` |
+
+**Problem.**
+- Image and file blocks report edits and actions through static events (`BlockEvents.ContentEdited`, `AttachmentActionRequested`, `ImageActionRequested`). Every open editor receives every event and has to check "is this mine?" (`Owns`).
+- Images load through a static property (`ImageBlockView.Loader`), which `AppController` sets at unlock and clears at lock.
+- Global state like this works with one editor, but it is easy to leak or mix up. It also makes tests depend on order, because one test's handler can see another test's events.
+
+**Proposed change.**
+- Raise the block events as WPF routed events that bubble up to the editor containing the block. The editor handles only its own events, and the `Owns` checks go.
+- Give each editor its image loader, from the open day's view model, instead of a static property. Locking then drops it automatically with the editor.
+
+**Proposed tests.**
+- Two editors open at once: an action in one never reaches the other.
+- After lock, no image can be loaded.
+- All image and file tests (TC-IMG-*, TC-ATT-*) pass.
+
+---
+
+## ISS-020: Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19, from Claude's code review requested by the owner |
+| **Type / Severity** | Refactor / Low |
+| **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
+| **Status** | Open. Not approved; no work until the owner approves. |
+| **Area** | `src/Journal.Core/Documents/DocumentModel.cs`, `src/Journal.App/Editor/FlowDocumentMapper.cs` |
+
+**Problem.**
+- A document's blocks are a small class family: paragraph, image, file. The code declares a visitor for them (`IDocBlockVisitor`, `Accept`), but nothing uses it.
+- Instead, code checks the block type directly:
+  - `JournalDocument.IsEmpty` and `ReferencedBlobs` (DocumentModel.cs, lines 193 and 222–223);
+  - the model-to-editor switch (FlowDocumentMapper.cs, lines 71–73).
+- Adding a new kind of block (a table or a drawing, say) would mean finding every such check.
+
+**Proposed change.**
+- Blocks answer questions about themselves: each block says whether it is empty and which vault files it uses (`IsEmpty`, `ReferencedBlobs()`), so `JournalDocument` just asks each block.
+- The mapper uses the visitor to build editor content, and the compiler then flags any block type the mapper doesn't handle. If the visitor turns out not to help, it is removed rather than left unused.
+- The filters `Images()`, `Attachments()` and `Paragraphs()` stay; picking blocks of one kind isn't a design problem.
+
+**Proposed tests.** TC-EDT-13 (500 random documents round-trip), the mapper tests and TC-ENT-07 (empty entries) pass. New: each block type reports empty and referenced files correctly.
+
+---
+
+## ISS-021: Refactor: turn the static EditorOperations into an editor-document object
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19, from Claude's code review requested by the owner |
+| **Type / Severity** | Refactor / Low |
+| **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
+| **Status** | Open. Not approved; no work until the owner approves. |
+| **Area** | `src/Journal.App/Editor/EditorOperations.cs` (368 lines), `JournalClipboard.cs`, `JournalEditor.xaml.cs` |
+
+**Problem.**
+- The editor's own operations (checklists, indenting, headings, inserting images and files, the strikethrough on ticked items) are a static class of functions that take a `RichTextBox` and change it from outside.
+- `JournalEditor` calls them in 20 places, and `JournalClipboard` calls them too.
+- It works and is tested, but it is procedural rather than object-oriented, and every function has to find its way around the document again.
+
+**Proposed change.**
+- A `JournalDocumentEditor` object wraps one `RichTextBox` and owns these operations as methods, for example `editor.ToggleChecklist()` and `editor.InsertBlocks(…)`.
+- The clipboard support (ISS-010) becomes part of it.
+- `JournalEditor` (the control) keeps the toolbar and keyboard handling and calls the object.
+- Do this after ISS-019, since both touch `JournalEditor`.
+
+**Proposed tests.** All editor tests (EditorOperationTests, CopyPasteTests, TC-EDT-*) pass, rewritten only to call the object instead of the static functions.
+
+---
+
+## ISS-022: Housekeeping: shared test fake for Settings, remove an unused package, split crowded files
+
+| | |
+|---|---|
+| **Reported** | 2026-10-19, from Claude's code review requested by the owner |
+| **Type / Severity** | Refactor / Low |
+| **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
+| **Status** | Open. Not approved; no work until the owner approves. |
+| **Area** | Tests, `Journal.App.csproj`, several source files |
+
+**Problem.**
+1. **Three Settings test fakes.** Three test files each have their own fake `ISettingsHost` (`ViewModelTests.FakeSettingsHost`, `LogoTests.MinimalSettingsHost`, `SettingsLayoutTests.Host`). Each change to that interface (twice during ISS-011 and ISS-015) meant editing all three.
+2. **An unused package.** `Journal.App.csproj` references `Microsoft.Extensions.DependencyInjection`, but no code uses it.
+3. **Crowded files.** Some files hold many types:
+   - `DailyInspirationService.cs`: 14 types (settings, strategies, sources, the service, `TraditionChoice`…);
+   - `DocumentModel.cs`: 13 types;
+   - `Vault.cs`: 11 types.
+   They are harder to find your way around than they need to be.
+
+**Proposed change.**
+1. One configurable `FakeSettingsHost` in the test support code, used by all three test files.
+2. Remove the unused package reference.
+3. Move the larger types in those three files into their own files, in the same folders and namespaces. Small records and enums that belong to one type stay with it.
+
+**Proposed tests.** All tests pass; this changes no behaviour. Do it first or alongside ISS-018; it is the lowest-risk item.
 
