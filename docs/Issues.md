@@ -834,7 +834,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | New **FR-UI-02**: the app shows its version number. |
 | **Tests to change** | New **TC-UI-03**. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 
 **Description.** The owner wants the app to show its version number, so it's clear which release is installed (for example 1.1.0 from the qapow.com download).
 
@@ -858,7 +858,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 2. **More detail:** show only the number, or also the release date and a link to the release notes on GitHub?
 
 **Proposed tests.**
-- **TC-UI-03 (automated):** the text in Settings and on the unlock window equals the version built into the program (1.1.0 today), with no "+…" suffix.
+- **TC-UI-03 (automated):** the text in Settings and on the unlock window equals the version built into the program (1.2.0 today), with no "+…" suffix.
 - **TC-UI-03 (manual):** after installing a release zip, the version shown matches the release's name on GitHub.
 
 **Fix (2026-11-04).**
@@ -867,7 +867,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 - **Owner's questions:** the owner approved without choosing other places or more detail, so this follows the proposal: those two places, number only.
 - **Requirement and tests:** new FR-UI-02 and TC-UI-03 (2 automated tests; the manual step comes with the next release zip).
 
-**To verify:** open Settings → General, then lock. Both show "Journal 1.1.0".
+**To verify:** open Settings → General, then lock. Both show "Journal 1.2.0".
 ---
 
 ## Code review, 2026-10-19 (background for ISS-018 to ISS-022)
@@ -892,7 +892,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Medium |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Services/AppController.cs` (409 lines) |
 
 **Problem.**
@@ -942,7 +942,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Controls/BlockControls.cs`, `JournalEditor.xaml.cs`, `AppController.cs` |
 
 **Problem.**
@@ -975,7 +975,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.Core/Documents/DocumentModel.cs`, `src/Journal.App/Editor/FlowDocumentMapper.cs` |
 
 **Problem.**
@@ -1008,7 +1008,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Editor/EditorOperations.cs` (368 lines), `JournalClipboard.cs`, `JournalEditor.xaml.cs` |
 
 **Problem.**
@@ -1040,7 +1040,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | Tests, `Journal.App.csproj`, several source files |
 
 **Problem.**
@@ -1080,7 +1080,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Area** | Unlocking, Windows Hello integration (`Hello/WinRtHello.cs`, `Views/UnlockWindow.xaml`) |
 | **Failing requirements** | FR-SEC-20: the app shall never leave a Windows Hello request waiting that the user can't see. Also affects FR-SEC-08 (unlocking with Windows Hello). |
 | **Failing tests** | None failed. **Test gap:** no test checks that the dialog appears in front. TC-SEC-20 (manual) checks when the prompt appears, not whether it can be seen. TC-SEC-23 uses a fake Windows Hello, so no real dialog appears. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 
 **Description.** After clicking **Unlock with Windows Hello**, the Windows Hello dialog often opens behind the "Journal is locked" window. **Expected:** the dialog is in front and ready to use.
 
@@ -1143,7 +1143,7 @@ Clicking and pressing Enter both show it, so how the unlock is started doesn't a
 | **Area** | Locking on sleep and on Windows shutdown (`LockCoordinator.HandlePowerMode`, `AppController.OnApplicationExit`) |
 | **Failing requirements** | FR-SEC-14 (lock when the PC sleeps), FR-SEC-16 (save before locking), FR-ENT-05 (save on lock). |
 | **Failing tests** | None failed. **Test gap:** TC-SEC-14 has nothing to save and uses no real files, so locking finishes at once. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 
 **Description.** If the PC goes to sleep while the open day has unsaved text, Journal freezes instead of saving and locking.
 
@@ -1192,7 +1192,7 @@ Clicking and pressing Enter both show it, so how the unlock is started doesn't a
 | **Area** | Tests, `docs/TestCases.md` |
 | **Failing requirements** | None known. Not verified: NFR-SEC-07 (settings files hold no journal content), NFR-PERF-02 (switching days within 300 ms, or 1 second with 10 images). Partly verified: FR-TAB-07 (tabs are independent). |
 | **Failing tests** | None failed; the tests don't exist. |
-| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. The tests now exist; one of them shows a new bug, ISS-026. |
+| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. The tests now exist; one of them shows a new bug, ISS-026. |
 
 **Description.** `docs/TestCases.md` marks every automated test case by level. Comparing those rows with the test code found:
 
