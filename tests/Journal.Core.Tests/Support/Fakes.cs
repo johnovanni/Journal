@@ -241,3 +241,13 @@ public static class TestData
         return (svc, repo, blobs, catalog);
     }
 }
+
+/// <summary>Performance tests run only when JOURNAL_PERF=1 (use a Release build).</summary>
+public sealed class PerfFactAttribute : FactAttribute
+{
+    public PerfFactAttribute()
+    {
+        if (Environment.GetEnvironmentVariable("JOURNAL_PERF") != "1")
+            Skip = "Performance test: set JOURNAL_PERF=1 and run in Release.";
+    }
+}

@@ -67,6 +67,37 @@ public class HelloPromptTests
         Assert.False(session.IsUnlocked);
     });
 
+    [Fact(DisplayName = "TC-SEC-27 The unlock window says Windows Hello is waiting, then clears the message")]
+    public void WaitingMessage() => AppThread.Run(async () =>
+    {
+        var (session, hello, _) = await LockedVaultAsync();
+        hello.WaitForUser = true;
+        var vm = new UnlockViewModel(session, () => 0);
+        var window = new UnlockWindow(vm) { Left = -20000, ShowActivated = false, ShowInTaskbar = false, WindowStartupLocation = System.Windows.WindowStartupLocation.Manual };
+        try
+        {
+            window.Show();
+            await AppThread.Settle();
+            var hint = (System.Windows.Controls.TextBlock)window.FindName("HelloWaitingHint");
+            Assert.False(hint.IsVisible);   // nothing is waiting yet
+
+            var pending = vm.TryHelloCommand.ExecuteAsync(null);
+            await AppThread.Settle();
+            window.UpdateLayout();
+            Assert.True(vm.IsHelloPending);
+            Assert.True(hint.IsVisible, "the waiting message isn't shown");
+            Assert.Contains("Alt+Tab", hint.Text);
+
+            vm.CancelPendingHello();
+            Assert.True(await FinishesAsync(pending));
+            await AppThread.Settle();
+            window.UpdateLayout();
+            Assert.False(vm.IsHelloPending);
+            Assert.False(hint.IsVisible, "the waiting message stayed after the request ended");
+        }
+        finally { window.Close(); }
+    });
+
     [Fact(DisplayName = "TC-SEC-22 The recovery code works while a Windows Hello request is waiting, and cancels it")]
     public void RecoveryWhileHelloWaits() => Sta.Run(async () =>
     {

@@ -33,19 +33,23 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-007 | Windows Hello prompts are left open after the app closes or a test ends | Bug | Medium | FR-SEC-08, FR-SEC-09; gap → FR-SEC-20 (proposed) | TC-SEC-09 (gap) → TC-SEC-22 | Closed |
 | ISS-008 | Windows Hello prompts automatically on the unlock screen, including after every lock | Change | Medium | FR-SEC-08 (change) | TC-SEC-20 (change), TC-SEC-23 | Closed |
 | ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Closed |
-| ISS-010 | Copy and paste drops checkboxes, images, attached files and headings | Bug | High | FR-EDT-01; FR-EDT-06, FR-EDT-08, FR-IMG-04, FR-ATT-02; new FR-EDT-13 | TC-EDT-01 (manual, text only); gap → TC-EDT-17 (new) | Verified |
-| ISS-011 | Add quotes from great literature (Shakespeare and world authors) | Change | Low | FR-INSP-02, FR-INSP-04, FR-INSP-06 (changed); FR-INSP-16, FR-INSP-17 (new) | TC-INSP-01, TC-INSP-05, TC-INSP-10 (changed); TC-INSP-16 (new) | Verified |
+| ISS-010 | Copy and paste drops checkboxes, images, attached files and headings | Bug | High | FR-EDT-01; FR-EDT-06, FR-EDT-08, FR-IMG-04, FR-ATT-02; new FR-EDT-13 | TC-EDT-01 (manual, text only); gap → TC-EDT-17 (new) | Closed |
+| ISS-011 | Add quotes from great literature (Shakespeare and world authors) | Change | Low | FR-INSP-02, FR-INSP-04, FR-INSP-06 (changed); FR-INSP-16, FR-INSP-17 (new) | TC-INSP-01, TC-INSP-05, TC-INSP-10 (changed); TC-INSP-16 (new) | Closed |
 | ISS-012 | Add world-religion texts to the verse and Science as a quote category (future) | Change | Low | FR-INSP-01, FR-INSP-03 (change); new requirements to be written | New tests to be written | Open |
-| ISS-013 | Mark each day sad, neutral or happy; tint the calendar and count moods | Change | Medium | FR-CAL-03 (change); new FR-MOOD-01…05 | TC-CAL-03 (change); new TC-MOOD-01…06 | Verified |
-| ISS-014 | A ticked checklist item's strikethrough also runs through its checkbox | Bug | Low | FR-EDT-09 | TC-EDT-11 (extended) | Verified |
-| ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Verified |
-| ISS-016 | Closing the window doesn't exit; the app keeps running in the background | Bug | High | FR-ENT-05, FR-ATT-06, FR-SEC-19; new FR-SEC-21 | None (gap: no test closes the real main window); new TC-SEC-26 | Verified |
-| ISS-017 | Show the app's version number | Change | Low | New FR-UI-02 (proposed) | New TC-UI-03 (proposed) | Open |
-| ISS-018 | Refactor: split AppController so startup, locking and exiting can be tested | Refactor | Medium | None (behaviour unchanged); protects FR-SEC-13…21, FR-ENT-05 | New tests for locking, auto-lock and exit; all existing tests must still pass | Open |
-| ISS-019 | Refactor: replace the editor's global static events and image loader with per-editor wiring | Refactor | Low | None (behaviour unchanged); protects FR-IMG-*, FR-ATT-* | TC-IMG-*, TC-ATT-* still pass; new test with two editors | Open |
-| ISS-020 | Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor | Refactor | Low | None (behaviour unchanged); protects FR-EDT-11 | TC-EDT-13 and the mapper tests still pass | Open |
-| ISS-021 | Refactor: turn the static EditorOperations into an editor-document object | Refactor | Low | None (behaviour unchanged); protects FR-EDT-*, FR-IMG-03 | Editor tests still pass | Open |
-| ISS-022 | Housekeeping: shared test fake for Settings, remove an unused package, split crowded files | Refactor | Low | None | All tests still pass | Open |
+| ISS-013 | Mark each day sad, neutral or happy; tint the calendar and count moods | Change | Medium | FR-CAL-03 (change); new FR-MOOD-01…05 | TC-CAL-03 (change); new TC-MOOD-01…06 | Closed |
+| ISS-014 | A ticked checklist item's strikethrough also runs through its checkbox | Bug | Low | FR-EDT-09 | TC-EDT-11 (extended) | Closed |
+| ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Closed |
+| ISS-016 | Closing the window doesn't exit; the app keeps running in the background | Bug | High | FR-ENT-05, FR-ATT-06, FR-SEC-19; new FR-SEC-21 | None (gap: no test closes the real main window); new TC-SEC-26 | Closed |
+| ISS-017 | Show the app's version number | Change | Low | New FR-UI-02 | New TC-UI-03 | Fixed |
+| ISS-018 | Refactor: split AppController so startup, locking and exiting can be tested | Refactor | Medium | None (behaviour unchanged); protects FR-SEC-13…21, FR-ENT-05 | New tests for locking, auto-lock and exit; all existing tests must still pass | Fixed |
+| ISS-019 | Refactor: replace the editor's global static events and image loader with per-editor wiring | Refactor | Low | None (behaviour unchanged); protects FR-IMG-*, FR-ATT-* | TC-IMG-*, TC-ATT-* still pass; new test with two editors | Fixed |
+| ISS-020 | Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor | Refactor | Low | None (behaviour unchanged); protects FR-EDT-11 | TC-EDT-13 and the mapper tests still pass | Fixed |
+| ISS-021 | Refactor: turn the static EditorOperations into an editor-document object | Refactor | Low | None (behaviour unchanged); protects FR-EDT-*, FR-IMG-03 | Editor tests still pass | Fixed |
+| ISS-022 | Housekeeping: shared test fake for Settings, remove an unused package, split crowded files | Refactor | Low | None | All tests still pass | Fixed |
+| ISS-023 | Windows Hello dialog opens behind the "Journal is locked" window | Bug | Medium | FR-SEC-20 (a Windows Hello request the user can't see); FR-SEC-08 | None failed (gap: no test checks that the dialog is in front); new TC-SEC-27 | Fixed |
+| ISS-024 | The app freezes when the PC goes to sleep with unsaved text | Bug | High | FR-SEC-14, FR-SEC-16, FR-ENT-05 | TC-SEC-14 passed (gap: it has nothing to save); new TC-SEC-28 | Fixed |
+| ISS-025 | Three test cases marked automated have no complete test | Test gap | Medium | NFR-SEC-07, NFR-PERF-02 (not verified); FR-TAB-07 (partly verified) | TC-NFR-09, TC-NFR-14, TC-TAB-07 | Fixed |
+| ISS-026 | Viewing a day re-saves it, and switching days is slower than required | Bug | Medium | NFR-PERF-02 | TC-NFR-14 (fails when run) | Open |
 
 ---
 
@@ -380,7 +384,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Editor: copy, cut and paste |
 | **Failing requirements** | FR-EDT-01 (the editor shall behave like a simple word processor, including cut, copy and paste). Content those requirements define is lost on paste: FR-EDT-08 (checklist items and their ticks), FR-IMG-04 (images with captions), FR-ATT-02 (attached-file chips), FR-EDT-06 (Heading 1 and 2). |
 | **Failing tests** | None failed. TC-EDT-01 (manual) only cuts and pastes a plain sentence. **Test gap:** no test copies and pastes checklists, images, files or headings. The automated test "Embedded blocks survive WPF's XAML copy (used by undo and copy/paste)" gave false assurance: it serializes the blocks with `XamlWriter` directly, which is not the path the editor's Copy command uses. |
-| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+| **Status** | Closed 2026-11-04. Verified by the owner 2026-10-19. Released in version 1.1.0. |
 
 **Description.** Copying journal content that contains checkboxes, then pasting it into another entry, loses the checkboxes and whether they were ticked. Asked to check other elements too.
 
@@ -469,7 +473,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | FR-INSP-02: the day shows a philosophy *or literature* quote. FR-INSP-06: quotes can also be filtered by category (Philosophy, Literature). New **FR-INSP-17**: quote categories are defined by the content, not the code; the card label, settings and filters list whatever categories exist. New **FR-INSP-16**: a built-in literature list of at least 366 distinct public-domain quotes from at least 30 authors across at least 8 languages or regions, each with author, work and source edition. |
 | **Tests to change** | TC-INSP-01 (the card label follows the quote's category); TC-INSP-05 (category filter). New **TC-INSP-16**: the literature list's size, authors, regions, no duplicates, and a source edition on every quote. |
-| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+| **Status** | Closed 2026-11-04. Verified by the owner 2026-10-19. Released in version 1.1.0. |
 
 **Description.** The owner wants quotes from great literature alongside the philosophy quotes: Shakespeare, and great authors from around the world.
 
@@ -566,7 +570,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | FR-CAL-03 (days with an entry are highlighted today; the mood tint has to work with that highlight). New requirements, proposed as FR-MOOD-01…05 below. |
 | **Tests to change** | TC-CAL-03 (highlight), TC-CAL-10 (manual visual check). New tests TC-MOOD-01…06 below. |
-| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+| **Status** | Closed 2026-11-04. Verified by the owner 2026-10-19. Released in version 1.1.0. |
 
 **Description.** The owner wants:
 1. For each day, the user can choose a sad, neutral or happy face.
@@ -647,7 +651,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Editor: checklist items |
 | **Failing requirements** | FR-EDT-09: ticked checklist items are shown with strikethrough. The strikethrough is meant for the item's text; it is also drawn through the checkbox. |
 | **Failing tests** | None failed. **Test gap:** TC-EDT-11 checks that the text is struck through when ticked and not after unticking, and that the stored format is unchanged. It doesn't check that the checkbox stays clear of the line. |
-| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+| **Status** | Closed 2026-11-04. Verified by the owner 2026-10-19. Released in version 1.1.0. |
 
 **Description.** When a checklist item is ticked, its text is struck through as expected, but a second line also appears. It runs behind the checkbox and sits slightly lower than the strikethrough on the text.
 
@@ -690,7 +694,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (layout change). |
 | **Requirements to change** | FR-INSP-06 (how the category and tradition choices are laid out, and that tradition choices belong to their category). |
 | **Tests to change** | TC-INSP-05 (Settings part); a new automated layout check. |
-| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+| **Status** | Closed 2026-11-04. Verified by the owner 2026-10-19. Released in version 1.1.0. |
 
 **Description.** The owner wants:
 1. Philosophy and Literature each in their own section of the quote settings, with their own choices. Philosophy comes first; the user scrolls down to reach Literature.
@@ -759,7 +763,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Area** | Closing the app (`AppController`) |
 | **Failing requirements** | No requirement says plainly that closing the main window exits the app; that is the expected behaviour (proposed new **FR-SEC-21**). Affected: FR-ENT-05 (save on close), FR-ATT-06 (temporary files deleted on exit), FR-SEC-19 (one instance: a leftover hidden copy blocks a new start). |
 | **Failing tests** | None failed. **Test gap:** no test closes the real main window through its close button. TC-ENT-05 covers saving on close through the view model only. |
-| **Status** | Verified by the owner 2026-10-19. Released in version 1.1.0. |
+| **Status** | Closed 2026-11-04. Verified by the owner 2026-10-19. Released in version 1.1.0. |
 
 **Description.** Clicking the window's close button (X) makes the journal content disappear, but the window and the app stay open. A second click closes the window, yet Journal sometimes stays in Task Manager's process list. **Expected:** one click saves, locks, closes the window and ends the process.
 
@@ -830,7 +834,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | New **FR-UI-02**: the app shows its version number. |
 | **Tests to change** | New **TC-UI-03**. |
-| **Status** | Open. Not approved; no work until the owner approves and answers the questions below. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 
 **Description.** The owner wants the app to show its version number, so it's clear which release is installed (for example 1.1.0 from the qapow.com download).
 
@@ -857,6 +861,13 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 - **TC-UI-03 (automated):** the text in Settings and on the unlock window equals the version built into the program (1.1.0 today), with no "+…" suffix.
 - **TC-UI-03 (manual):** after installing a release zip, the version shown matches the release's name on GitHub.
 
+**Fix (2026-11-04).**
+- `AppInfo` reads the version from the running program and drops the commit suffix. `SettingsViewModel` and `UnlockViewModel` expose "Journal 1.1.0" as `VersionText`.
+- Shown under a new ABOUT heading at the bottom of Settings → General, and in small grey text at the bottom of the unlock window. Nothing changed in the main window.
+- **Owner's questions:** the owner approved without choosing other places or more detail, so this follows the proposal: those two places, number only.
+- **Requirement and tests:** new FR-UI-02 and TC-UI-03 (2 automated tests; the manual step comes with the next release zip).
+
+**To verify:** open Settings → General, then lock. Both show "Journal 1.1.0".
 ---
 
 ## Code review, 2026-10-19 (background for ISS-018 to ISS-022)
@@ -881,7 +892,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Medium |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Open. Not approved; no work until the owner approves. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Services/AppController.cs` (409 lines) |
 
 **Problem.**
@@ -913,6 +924,15 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
   - moving the journal saves first.
 - All existing tests pass.
 
+**Fix (2026-11-04).**
+- **`LockCoordinator`** (new) handles auto-lock and the idle timer, Windows lock and sleep events, locking and the exit sequence.
+- **`SettingsActions`** (new) implements `ISettingsHost`: imports, moving the journal, backup, applying settings. It reaches the open journal through a small `IOpenJournal` interface.
+- **`AppController`** keeps the window flow and the wiring, down from 409 to about 300 lines.
+- **One behaviour change, on purpose:** exiting while a lock is already running now waits for that lock, so the app can't end in the middle of its save. Before, it went straight on to shut down.
+- **Tests:** `LockCoordinatorTests` (15 tests): auto-lock, Windows lock, sleep, two locks at once, exit during a lock, and the Settings actions. TC-SEC-13, 14, 15, 26 and TC-SET-01, 03 are extended.
+- **Found while testing:** the app freezes on sleep when there is unsaved text. It predates this split; logged as ISS-024.
+
+**To verify:** Lock button, auto-lock, Win+L, moving the journal, importing a list and closing with the X all work as before.
 ---
 
 ## ISS-019: Refactor: replace the editor's global static events and image loader with per-editor wiring
@@ -922,7 +942,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Open. Not approved; no work until the owner approves. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Controls/BlockControls.cs`, `JournalEditor.xaml.cs`, `AppController.cs` |
 
 **Problem.**
@@ -939,6 +959,13 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 - After lock, no image can be loaded.
 - All image and file tests (TC-IMG-*, TC-ATT-*) pass.
 
+**Fix (2026-11-04).**
+- `BlockEvents` now registers routed events (`ContentEditedEvent`, `AttachmentActionEvent`, `ImageActionEvent`) that bubble to the editor holding the block, so the "is this mine?" check (`Owns`, `IsInDocument`) and the subscribe and unsubscribe code are gone.
+- An image asks for its bitmap with a routed event (`BlockEvents.ImageLoadEvent`), and the editor holding it answers from its open tab. Images re-created by undo ask the same way, and a closed day gives no answer, so nothing can load after a lock.
+- **Tests:** new TC-IMG-11 (`BlockRoutingTests`), with real images in the real main window across day switches. TC-IMG-05 is adapted to the routed event.
+- **Correction (2026-11-04): the first version of this fix broke images.** It used an inherited property for the loader. That worked in a standalone editor, which was all its test covered, but in the real main window the images never received the loader, so they showed "Image unavailable". It was found while running TC-NFR-14 (ISS-025), before the owner had verified it and before any commit or release. It's now replaced by the routed event above, and the tests use the real main window.
+
+**To verify:** images show when a day opens and after undo; removing an image or file, and double-clicking one, work as before.
 ---
 
 ## ISS-020: Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor
@@ -948,7 +975,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Open. Not approved; no work until the owner approves. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.Core/Documents/DocumentModel.cs`, `src/Journal.App/Editor/FlowDocumentMapper.cs` |
 
 **Problem.**
@@ -965,6 +992,13 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 
 **Proposed tests.** TC-EDT-13 (500 random documents round-trip), the mapper tests and TC-ENT-07 (empty entries) pass. New: each block type reports empty and referenced files correctly.
 
+**Fix (2026-11-04).**
+- `DocBlock` gains `IsEmpty()` and `ReferencedBlobs()`, and each kind of block answers for itself. `JournalDocument` just asks its blocks.
+- The visitor is now used: `FlowDocumentMapper.ToFlowDocument` builds editor content with a `FlowBuilder : IDocBlockVisitor`, so a new kind of block won't compile until it is handled there. Nothing is left unused, so nothing was removed.
+- `Images()`, `Attachments()` and `Paragraphs()` stay, as proposed.
+- **Tests:** new `DocBlockTests` (3 tests); TC-EDT-13's 500 random documents, the mapper tests and TC-ENT-07 pass.
+
+**To verify:** no visible change.
 ---
 
 ## ISS-021: Refactor: turn the static EditorOperations into an editor-document object
@@ -974,7 +1008,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Open. Not approved; no work until the owner approves. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Editor/EditorOperations.cs` (368 lines), `JournalClipboard.cs`, `JournalEditor.xaml.cs` |
 
 **Problem.**
@@ -990,6 +1024,13 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 
 **Proposed tests.** All editor tests (EditorOperationTests, CopyPasteTests, TC-EDT-*) pass, rewritten only to call the object instead of the static functions.
 
+**Fix (2026-11-04).**
+- `EditorOperations` is now `JournalDocumentEditor`, an object wrapping one `RichTextBox`. Operations on the document are methods; helpers that need only one paragraph or block stay static.
+- The clipboard's copying and pasting moved in (`AttachClipboard`, `SelectionFragment`, `InsertFragment`). `JournalClipboard` keeps the clipboard format itself.
+- `JournalEditor` holds one `_document` and calls it; it keeps the toolbar and keyboard handling.
+- **Tests:** editor and copy-and-paste tests changed only to call the object.
+
+**To verify:** no visible change. Checklists, indenting, headings, copy and paste work as before.
 ---
 
 ## ISS-022: Housekeeping: shared test fake for Settings, remove an unused package, split crowded files
@@ -999,7 +1040,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Open. Not approved; no work until the owner approves. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
 | **Area** | Tests, `Journal.App.csproj`, several source files |
 
 **Problem.**
@@ -1017,4 +1058,215 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 3. Move the larger types in those three files into their own files, in the same folders and namespaces. Small records and enums that belong to one type stay with it.
 
 **Proposed tests.** All tests pass; this changes no behaviour. Do it first or alongside ISS-018; it is the lowest-risk item.
+
+**Fix (2026-11-04).**
+- One `FakeSettingsHost` in the test support code replaces the three fakes.
+- Removed the unused `Microsoft.Extensions.DependencyInjection` package.
+- Split crowded files, moving code without changing it:
+  - `DocumentModel.cs` into `TextFormatting.cs`, `DocBlocks.cs` and `JournalDocument.cs`;
+  - `Vault.cs` into `VaultHeader.cs`, `KeyProtection.cs` and `MachineIdentity.cs`;
+  - `DailyInspirationService.cs` into itself, `InspirationSettings.cs`, `InspirationSources.cs` and `SelectionStrategies.cs`.
+- **Noticed during this work:** TC-NFR-15 (search speed) failed once during a full test run while other tests were building and running at the same time, then passed 5 out of 5 on its own. This looks like a timing check affected by a busy PC, not a slower search.
+
+**To verify:** no visible change.
+---
+
+## ISS-023: Windows Hello dialog opens behind the "Journal is locked" window
+
+| | |
+|---|---|
+| **Reported** | 2026-11-04 |
+| **Type / Severity** | Bug / Medium (happens often; unlocking looks stuck until the dialog is found; nothing is lost) |
+| **Area** | Unlocking, Windows Hello integration (`Hello/WinRtHello.cs`, `Views/UnlockWindow.xaml`) |
+| **Failing requirements** | FR-SEC-20: the app shall never leave a Windows Hello request waiting that the user can't see. Also affects FR-SEC-08 (unlocking with Windows Hello). |
+| **Failing tests** | None failed. **Test gap:** no test checks that the dialog appears in front. TC-SEC-20 (manual) checks when the prompt appears, not whether it can be seen. TC-SEC-23 uses a fake Windows Hello, so no real dialog appears. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+
+**Description.** After clicking **Unlock with Windows Hello**, the Windows Hello dialog often opens behind the "Journal is locked" window. **Expected:** the dialog is in front and ready to use.
+
+**Reproduction.** Reported by the owner as happening "a lot", so not every time. It happens only when the unlock window is on the main display, and both after clicking the button and after pressing Enter (owner, 2026-11-04). Not yet reproduced by Claude: reproducing it opens real Windows Hello dialogs that the app can't close (ISS-007), so any experiment should run with the owner present.
+
+**What the code shows (checked 2026-11-04).**
+- **Separate process:** the dialog belongs to Windows, not to Journal. The key-signing call (`KeyCredential.RequestSignAsync`) takes no window, so the dialog has no link to the journal's window and nothing makes it stay above it (ISS-009).
+- **The existing protection may be part of the problem:**
+  - Just before asking Windows Hello, `WinRtHelloCredentialApi.SignAsync` calls `Foreground.Bring`, which puts the journal's window in front. Its comment says this keeps the prompt from opening behind the window.
+  - It keeps Journal as the foreground app at the moment the dialog needs to come forward.
+  - Windows limits which programs may take the foreground, and Journal never calls `AllowSetForegroundWindow` to let the dialog do so.
+- **Same place on screen:** the unlock window opens centred on its display (`CenterScreen`, 460 wide). ISS-009 found that the dialog also opens on the main display. With the unlock window on the main display, the two can overlap, so the unlock window can hide much of the dialog.
+- **No sign in the window:** while the request waits, the unlock window gives no hint that a dialog is open or where to look. The only related hint is "Windows Hello opens on your main display", shown only on a side display.
+
+**Likely cause (not yet confirmed).** Two things combine:
+- **Stacking order:** Windows doesn't always let the dialog take the foreground from Journal, so it can open behind the window. That would fit it happening only some of the time.
+- **Overlap:** the owner sees it only with the unlock window on the main display, where the dialog also opens. On a side display the two don't overlap, so the dialog stays visible whichever is in front. The dialog may be behind Journal there too, with nothing covering it.
+
+Clicking and pressing Enter both show it, so how the unlock is started doesn't appear to matter.
+
+**Proposed fix.** Try the steps in order, confirming each in the real app with the owner, and keep only what works.
+1. **Let the dialog come forward:** remove `Foreground.Bring` from the key-signing path (the click already makes Journal active), and call `AllowSetForegroundWindow` just before asking Windows Hello, so Windows lets the dialog take the foreground.
+2. **If it can still hide:** when the unlock window is on the main display, step it aside while the request waits, by sending it behind other windows, minimizing it or moving it clear of the dialog, then bring it back when the request finishes. The recovery code must stay reachable (FR-SEC-20). On a side display this isn't needed, since nothing overlaps.
+3. **Always, as a safety net:** while the request waits, the unlock window says "Waiting for Windows Hello. If you don't see it, it may be behind this window. Press Alt+Tab to find it."
+
+**Not proposed:**
+- Moving or closing the dialog from Journal: Windows refuses this (ISS-007, ISS-009).
+- Switching to the window-aware consent check: it could keep the dialog with the journal's window, but it weakens how the journal key is protected (ISS-009, option E, which the owner didn't choose).
+
+**Owner's answers (2026-11-04).**
+1. It occurs only when the unlock window is on the main display.
+2. It happens both when clicking the button and when pressing Enter.
+
+**Question still open.** Is it more common in certain situations, such as after auto-lock, after locking Windows or waking the PC, or when another app was in front?
+
+**Proposed tests.**
+- **TC-SEC-27 (new, automated):**
+  - while a fake Windows Hello request waits, the unlock window shows the waiting message, and the message goes when the request finishes or is cancelled;
+  - the foreground permission is requested before the Windows Hello call;
+  - if step 2 is built, the window steps aside only on the main display and comes back, and the recovery code stays reachable.
+- **TC-SEC-27 (manual, on this PC with its three displays):** unlock 10 times with the unlock window on the main display, using the button and Enter, and after auto-lock, after locking Windows, and with another app in front; then a few times on a side display as a check. The dialog can be seen and used every time, or the message says where to find it. An automated test can't cover this, because the real dialog needs a person.
+
+**Fix (2026-11-04), steps 1 and 3 of the proposal.**
+- **Step 1:** key signing and creation no longer pull Journal to the front just before asking Windows Hello. They call `AllowSetForegroundWindow`, so Windows lets the dialog come forward. The window-aware consent check keeps its existing behaviour.
+- **Step 3:** while a request waits, the unlock window says "Waiting for Windows Hello. If you don't see it, it may be behind this window. Press Alt+Tab to find it."
+- **Step 2 not built:** stepping the unlock window aside was only for if the dialog can still hide. That depends on the owner's test below.
+- **Not confirmed:** whether step 1 cures it can only be seen with the real dialog, which an automated test can't open. The automated test covers the message only.
+- **Requirement and tests:** new FR-SEC-22 and TC-SEC-27.
+
+**To verify (TC-SEC-27, manual):** with the unlock window on the main display, unlock about 10 times, using the button and Enter. If the dialog still hides behind the window, say so and step 2 will be built.
+
+---
+
+## ISS-024: The app freezes when the PC goes to sleep with unsaved text
+
+| | |
+|---|---|
+| **Reported** | 2026-11-04, found by Claude while testing ISS-018 |
+| **Type / Severity** | Bug / High (the journal may stay unlocked through sleep, and unsaved text can be lost when the frozen app is ended) |
+| **Area** | Locking on sleep and on Windows shutdown (`LockCoordinator.HandlePowerMode`, `AppController.OnApplicationExit`) |
+| **Failing requirements** | FR-SEC-14 (lock when the PC sleeps), FR-SEC-16 (save before locking), FR-ENT-05 (save on lock). |
+| **Failing tests** | None failed. **Test gap:** TC-SEC-14 has nothing to save and uses no real files, so locking finishes at once. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+
+**Description.** If the PC goes to sleep while the open day has unsaved text, Journal freezes instead of saving and locking.
+
+**Evidence (2026-11-04).** A temporary test used a real vault on disk with one unsaved entry, then called the sleep handler on a UI thread. After 15 seconds it had not returned, so nothing was saved or locked. The test was removed afterwards. It wasn't tried on a PC actually going to sleep.
+
+**Cause.**
+- The sleep handler runs the lock on the UI thread and blocks that thread until the lock finishes (`Dispatcher.Invoke(() => LockAsync(…).GetAwaiter().GetResult())`).
+- Saving uses real asynchronous file writes, and each continues on the UI thread (no code uses `ConfigureAwait(false)`). The UI thread is blocked waiting for the save, and the save is waiting for the UI thread, so neither can go on.
+- With nothing to save, locking may finish without waiting on the disk, so the freeze wouldn't appear every time.
+- `AppController.OnApplicationExit`, which runs when Windows shuts down, blocks in the same way, so it is likely to freeze too. That path wasn't run in the experiment.
+- The old `AppController` had the same code; the ISS-018 split moved it unchanged.
+
+**Proposed fix.**
+1. **Sleep:** start the lock on the UI thread without blocking it, and have the Windows notification thread wait for it to finish, with a limit of a few seconds, so Windows doesn't sleep before the save completes and the wait can't hang forever.
+2. **Windows shutdown:** keep the UI thread processing work while waiting for the lock (a nested dispatcher frame), with a time limit.
+3. If the limit is reached, log it; the journal is still protected once the PC is off, but a save could be lost. No new data format or requirement is needed.
+
+**Proposed tests.**
+- **TC-SEC-28 (new, automated):** with a real vault and unsaved text, the sleep and shutdown paths finish within the limit, the text is saved and the journal is locked. It must fail before the fix, using the temporary test described above with a time limit so it can't hang the test run.
+- **TC-SEC-28 (manual):** type text, put the PC to sleep at once, then wake it. The unlock window is showing, and the text is there after unlocking.
+
+**Fix (2026-11-04).**
+- **`LockCoordinator.LockAndWait`** (new) locks and returns only when that has finished or 5 seconds have passed. It is used on sleep and when Windows shuts down.
+  - .NET delivers the sleep notification on the thread that subscribed, which is the UI thread. So on the UI thread it keeps the thread processing work while waiting (a nested dispatcher frame), which lets the save finish. This differs slightly from the proposal, which assumed a separate notification thread.
+  - On any other thread it simply waits.
+  - A lock already running is joined instead of being skipped.
+- **Past the limit, or on failure,** the problem goes to the log (`LockProblem`) and nothing is thrown at Windows. A slow save carries on and the lock completes afterwards, but the PC may start sleeping first, so that journal could stay unlocked until it finishes on waking.
+- **Windows shutdown:** `AppController.OnApplicationExit` uses `LockAndWait` too.
+- **Tests:**
+  - New TC-SEC-28 (`SleepLockTests`, 6 tests) uses a real vault on disk and a watchdog, so a freeze fails the test instead of hanging the run.
+  - The first test failed before the fix ("the app froze") and passes after.
+  - TC-SEC-14 now points to TC-SEC-28 for a real save.
+- **Timing measured:** with a 5-second limit, these tests failed in about 1 of 3 full test runs. Measuring showed the lock always finished, taking 0.14 to 4.2 seconds, and the slow runs had a busy thread pool because hundreds of tests run in parallel. So it was slow, not stuck. The tests now use a 45-second limit, with a 60-second watchdog, so only a real freeze can fail them; a separate test still checks the limit itself. After that, 10 full test runs in a row passed. The app keeps its 5-second limit; a very busy PC could reach it, and that would be logged.
+- **Not verified:** a PC really going to sleep, and a real Windows shutdown; those need the manual step.
+
+**To verify (TC-SEC-28, manual):** type some text, put the PC to sleep straight away (Start → Power → Sleep), then wake it. The unlock window should be showing, and after unlocking the text should be there.
+- **Correction (2026-11-04): one of these tests was unreliable.** "Sleeping during a lock" failed in about 1 of 5 full runs, found while repeating the suite for ISS-025. Its line 134 checked the first caller's task right after the wait ended, but that task finishes one turn of the UI thread after the lock itself. The lock had finished each time, so this was a flaw in the test and not in the app. The test now checks the lock itself: the vault is locked, the text is saved and only one lock ran.
+---
+
+## ISS-025: Three test cases marked automated have no complete test
+
+| | |
+|---|---|
+| **Reported** | 2026-11-04, found by Claude while bringing the documents up to date |
+| **Type / Severity** | Test gap / Medium (nothing is known to be broken, but these requirements aren't checked as the documents said they were) |
+| **Area** | Tests, `docs/TestCases.md` |
+| **Failing requirements** | None known. Not verified: NFR-SEC-07 (settings files hold no journal content), NFR-PERF-02 (switching days within 300 ms, or 1 second with 10 images). Partly verified: FR-TAB-07 (tabs are independent). |
+| **Failing tests** | None failed; the tests don't exist. |
+| **Status** | Fixed 2026-11-04, waiting for the owner to verify. Approved by the owner 2026-11-04. The tests now exist; one of them shows a new bug, ISS-026. |
+
+**Description.** `docs/TestCases.md` marks every automated test case by level. Comparing those rows with the test code found:
+
+| Test case | What exists today |
+|---|---|
+| **TC-NFR-09** (I): scan `settings.json` for journal content | No test. `AppSettings` has no fields for journal content, but nothing checks the saved file. |
+| **TC-NFR-14** (A): day-switching speed | No test. Switching days has never been measured against NFR-PERF-02. |
+| **TC-TAB-07** (I): text, image and file in two tabs survive save and reload | Partly: a vault test covers text in two tabs, not images and files. |
+
+**Also corrected while checking, no further work needed:**
+- TC-ATT-07 was already covered, inside the TC-ATT-01/04 test, which now names it.
+- TC-NFR-22 (coverage) is a check run by hand, not an automated test, so it's now level M. Measured on 2026-11-04: 88.3 % against the 85 % target.
+- TC-SEC-01 (first start shows setup) had no automated test, because the startup flow in `AppController` needs real windows, so it's now level M.
+
+**Proposed change.**
+1. **TC-NFR-09:** with a real vault, save settings after using the app with marker text, tags and imported lists, then check the settings file contains none of it.
+2. **TC-NFR-14:** a performance test like TC-NFR-13, skipped by default and run with `JOURNAL_PERF=1`, because timings aren't reliable in a busy parallel run (see ISS-022 and ISS-024).
+3. **TC-TAB-07:** extend the vault test with different images and files in two tabs.
+4. Remove the notes from those rows once the tests exist.
+
+**Proposed tests.** These are the tests. If TC-NFR-14 finds that switching days misses its target, that becomes a new bug.
+
+**Fix (2026-11-04).**
+- **TC-TAB-07** (`VaultTests`): different text, images and files in two tabs survive save and reload with each tab's own bytes. Changing one tab leaves the other alone, and removing a tab keeps the other tab's files.
+- **TC-NFR-09** (`SettingsFileAndSpeedTests`): with marker text in entries, tags, captions, file names and imported lists, the saved settings file contains none of it. The test also lists the setting names allowed, so a new setting has to be checked against NFR-SEC-07 deliberately. It passes.
+- **TC-NFR-14** (`SettingsFileAndSpeedTests`): the real main window with a 3,650-entry vault and real 1 MB images, on days not opened before so the image cache can't help. Skipped by default; run with `JOURNAL_PERF=1` in Release. **It fails: see ISS-026.**
+- **`PerfFact`** moved to the shared test support, so both test projects can use it.
+- **Also fixed: a test-harness flaw.** `AppThread.Run` waited 60 seconds and ignored the result, so a UI test that hung would pass. A timeout now fails the test. No existing test turned out to be hanging.
+- **Also found:** this work exposed a regression in the first ISS-019 fix (images not loading in the real window); see the correction under ISS-019.
+- **Test results:** Core 70 passed; App 123 passed, 1 skipped (TC-NFR-14); Infrastructure 41 passed, 1 skipped (TC-NFR-13).
+
+---
+
+## ISS-026: Viewing a day re-saves it, and switching days is slower than required
+
+| | |
+|---|---|
+| **Reported** | 2026-11-04, found by Claude with the new TC-NFR-14 (ISS-025) |
+| **Type / Severity** | Bug / Medium (nothing is lost, but browsing rewrites files and days open slowly) |
+| **Area** | Opening and leaving a day (`EntryViewModel.FlushAsync`, `FlowDocumentMapper`, `JournalEditor`) |
+| **Failing requirements** | NFR-PERF-02: switching days within 300 ms without images, 1 second with 10 images. |
+| **Failing tests** | TC-NFR-14 fails when run (`JOURNAL_PERF=1`, Release): text-only median **1,116 ms** against 300 ms; 10 images median **1,268 ms** against 1,000 ms. |
+| **Status** | Open. Not approved; no work until the owner approves. |
+
+**Description.** Switching from one day to another takes about a second, and leaving a day rewrites it even if nothing changed.
+
+**What was measured (2026-11-04).** Release build, real main window off screen, 3,650 entries, on this PC.
+
+| Text-only switch | Time |
+|---|---|
+| Leaving the old day and opening the new one | about 510 ms |
+| Showing it (layout and drawing) | about 550 ms |
+
+In the run, **10 switches caused 10 saves**, with nothing edited.
+
+**Cause of the saves.**
+- On leaving a day, `EntryViewModel` compares the document before and after reading it back from the editor, and saves if they differ.
+- Reading back gives every paragraph a new id (`FlowDocumentMapper.ReadParagraph` creates a new `ParagraphBlock`), so the two never match, and the day is always saved.
+- **Effects:**
+  - each switch writes the entry file and re-encrypts and rewrites the whole catalog, which is why a large vault is slower;
+  - a day's modified time changes just by looking at it;
+  - browsing past days rewrites files, which in a OneDrive folder means needless syncing.
+
+**Not yet known.** How much of the "showing" time is real, and how much comes from the test's own wait for WPF to go idle. Removing the unneeded save should bring text-only to about 550 ms, which would still miss 300 ms.
+
+**Proposed fix.**
+1. **Stop the unneeded save:** compare documents without their paragraph ids, or keep ids through the editor. Only a real change saves. This should remove most of the "leaving" time and all the rewrites.
+2. **Then measure again** and split the "showing" time. Candidates:
+   - building a new `FlowDocument`;
+   - rebuilding the 42 calendar cells on each change;
+   - the wait in the test itself.
+3. **If 300 ms is still out of reach,** the owner decides: speed up further, or change NFR-PERF-02 to a figure that can be met.
+
+**Proposed tests.**
+- **New (automated):** opening and leaving a day with no edits saves nothing, for days with text, checklists, headings, lists, images and files; the entry's modified time doesn't change; a real edit still saves.
+- **TC-NFR-14:** must pass, or NFR-PERF-02 is changed by the owner's decision.
 

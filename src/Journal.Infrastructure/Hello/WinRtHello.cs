@@ -17,7 +17,7 @@ public sealed class WinRtHelloCredentialApi : IHelloCredentialApi
 
     public async Task CreateAsync(string name, nint windowHandle, CancellationToken cancellation = default)
     {
-        Foreground.Bring(windowHandle);
+        Foreground.AllowPrompt();
         var result = await KeyCredentialManager.RequestCreateAsync(name, KeyCredentialCreationOption.ReplaceExisting).AsTask(cancellation);
         Check(result.Status);
     }
@@ -28,7 +28,7 @@ public sealed class WinRtHelloCredentialApi : IHelloCredentialApi
         if (open.Status == KeyCredentialStatus.NotFound)
             throw new UnlockFailedException(UnlockFailure.NotAvailable, "This PC has no Windows Hello key for this journal.");
         Check(open.Status);
-        Foreground.Bring(windowHandle);
+        Foreground.AllowPrompt();
         var signed = await open.Credential.RequestSignAsync(CryptographicBuffer.CreateFromByteArray(data)).AsTask(cancellation);
         Check(signed.Status);
         CryptographicBuffer.CopyToByteArray(signed.Result, out var bytes);
@@ -81,15 +81,29 @@ public sealed class WinRtUserConsentApi : IUserConsentApi
     }
 }
 
-/// <summary>Keeps the Windows Hello prompt from opening behind the journal window.</summary>
+/// <summary>Keeps the Windows Hello prompt from opening behind the journal window (ISS-023).</summary>
 internal static partial class Foreground
 {
+    private const uint AnyProcess = unchecked((uint)-1);   // ASFW_ANY
+
+    /// <summary>For the window-aware consent check: the dialog opens over this window, so it comes forward first.</summary>
     public static void Bring(nint hwnd)
     {
         if (hwnd != 0) SetForegroundWindow(hwnd);
     }
 
+    /// <summary>
+    /// For key signing and creation, whose dialog is a separate Windows process with no link to our window:
+    /// Windows stops a background process taking the foreground unless the foreground app allows it. The
+    /// permission lasts only until the next input, and bringing our own window forward here would work against it.
+    /// </summary>
+    public static void AllowPrompt() => AllowSetForegroundWindow(AnyProcess);
+
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetForegroundWindow(nint hWnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool AllowSetForegroundWindow(uint processId);
 }

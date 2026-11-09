@@ -40,42 +40,54 @@ public sealed class FlowDocumentMapper
     public FlowDocument ToFlowDocument(JournalDocument doc)
     {
         var fd = CreateEmptyDocument();
-        var stack = new List<(DocList List, ListKind Kind)>();
-
-        foreach (var block in doc.Blocks)
-        {
-            if (block is ParagraphBlock { List: ListKind.Bulleted or ListKind.Numbered } p)
-            {
-                int level = Math.Clamp(p.ListLevel, 0, Math.Min(stack.Count, ParagraphBlock.MaxListLevel));
-                while (stack.Count > level + 1) stack.RemoveAt(stack.Count - 1);
-                if (stack.Count == level + 1 && stack[^1].Kind != p.List) stack.RemoveAt(stack.Count - 1);
-                if (stack.Count == level)
-                {
-                    var list = NewList(p.List);
-                    if (level == 0) fd.Blocks.Add(list);
-                    else
-                    {
-                        var parent = stack[^1].List;
-                        var host = parent.ListItems.LastListItem ?? AddItem(parent, new WpfParagraph());
-                        host.Blocks.Add(list);
-                    }
-                    stack.Add((list, p.List));
-                }
-                AddItem(stack[^1].List, BuildParagraph(p));
-                continue;
-            }
-
-            stack.Clear();
-            fd.Blocks.Add(block switch
-            {
-                ParagraphBlock para => BuildParagraph(para),
-                ImageBlock img => ImageContainer(img),
-                AttachmentBlock att => AttachmentContainer(att),
-                _ => new WpfParagraph(),
-            });
-        }
+        var builder = new FlowBuilder(fd);
+        foreach (var block in doc.Blocks) block.Accept(builder);
         if (fd.Blocks.Count == 0) fd.Blocks.Add(new WpfParagraph());
         return fd;
+    }
+
+    /// <summary>Adds each kind of block to the document, keeping track of the lists it is inside.</summary>
+    private sealed class FlowBuilder(FlowDocument fd) : IDocBlockVisitor
+    {
+        private readonly List<(DocList List, ListKind Kind)> _lists = [];
+
+        public void Visit(ParagraphBlock p)
+        {
+            if (p.List is not (ListKind.Bulleted or ListKind.Numbered))
+            {
+                _lists.Clear();
+                fd.Blocks.Add(BuildParagraph(p));
+                return;
+            }
+            int level = Math.Clamp(p.ListLevel, 0, Math.Min(_lists.Count, ParagraphBlock.MaxListLevel));
+            while (_lists.Count > level + 1) _lists.RemoveAt(_lists.Count - 1);
+            if (_lists.Count == level + 1 && _lists[^1].Kind != p.List) _lists.RemoveAt(_lists.Count - 1);
+            if (_lists.Count == level)
+            {
+                var list = NewList(p.List);
+                if (level == 0) fd.Blocks.Add(list);
+                else
+                {
+                    var parent = _lists[^1].List;
+                    var host = parent.ListItems.LastListItem ?? AddItem(parent, new WpfParagraph());
+                    host.Blocks.Add(list);
+                }
+                _lists.Add((list, p.List));
+            }
+            AddItem(_lists[^1].List, BuildParagraph(p));
+        }
+
+        public void Visit(ImageBlock image)
+        {
+            _lists.Clear();
+            fd.Blocks.Add(ImageContainer(image));
+        }
+
+        public void Visit(AttachmentBlock attachment)
+        {
+            _lists.Clear();
+            fd.Blocks.Add(AttachmentContainer(attachment));
+        }
     }
 
     public static FlowDocument CreateEmptyDocument()

@@ -9,20 +9,26 @@ using WpfParagraph = System.Windows.Documents.Paragraph;
 
 namespace Journal.App.Editor;
 
-/// <summary>Editing operations on a RichTextBox that the built-in EditingCommands don't provide.</summary>
-public static class EditorOperations
+/// <summary>
+/// The journal's editing of one document, wrapping its RichTextBox: what the built-in EditingCommands don't
+/// provide, and copying and pasting journal content (ISS-021). Helpers that need only a paragraph or a block
+/// are static.
+/// </summary>
+public sealed class JournalDocumentEditor(RichTextBox box)
 {
+    private static readonly FlowDocumentMapper Mapper = new();
+
     /// <summary>
     /// Inserts a block (image or file) at the caret on its own line. A caret in the middle of a paragraph
     /// splits the paragraph around the block (FR-IMG-03).
     /// </summary>
-    public static void InsertBlockAtCaret(RichTextBox box, Block block) => InsertBlocksAtCaret(box, [block]);
+    public void InsertBlockAtCaret(Block block) => InsertBlocksAtCaret([block]);
 
     /// <summary>
     /// Inserts blocks at the caret, in order, as <see cref="InsertBlockAtCaret"/> does for one block
     /// (also used to paste journal content, ISS-010). The caret ends up after the last block.
     /// </summary>
-    public static void InsertBlocksAtCaret(RichTextBox box, IReadOnlyList<Block> blocks)
+    public void InsertBlocksAtCaret(IReadOnlyList<Block> blocks)
     {
         if (blocks.Count == 0) return;
         var doc = box.Document;
@@ -86,6 +92,86 @@ public static class EditorOperations
         box.Focus();
     }
 
+    // ------------------------------------------------------------------ copy and paste (ISS-010)
+
+    /// <summary>Adds the journal format when the editor copies, cuts or starts a drag, and reads it on paste and drop.</summary>
+    public void AttachClipboard(Func<bool> canPaste, Action pasted)
+    {
+        DataObject.AddCopyingHandler(box, (_, e) =>
+        {
+            if (SelectionFragment() is { } fragment) JournalClipboard.AddTo(e.DataObject, fragment);
+        });
+        DataObject.AddPastingHandler(box, (_, e) =>
+        {
+            if (!canPaste() || !e.DataObject.GetDataPresent(JournalClipboard.Format) || JournalClipboard.Read(e.DataObject) is not { } fragment) return;
+            InsertFragment(fragment);
+            if (e.IsDragDrop)
+            {
+                // Let the drop finish with nothing to paste, so a move still removes the dragged original.
+                e.DataObject = new DataObject(DataFormats.UnicodeText, "");
+                e.FormatToApply = DataFormats.UnicodeText;
+            }
+            else
+            {
+                e.CancelCommand();
+            }
+            pasted();
+        });
+    }
+
+    /// <summary>
+    /// The selection as journal content, or null when WPF's own copy already keeps it: an empty selection,
+    /// or text inside one plain paragraph.
+    /// </summary>
+    public JournalDocument? SelectionFragment()
+    {
+        var selection = box.Selection;
+        if (selection.IsEmpty) return null;
+        var fragment = Mapper.FromRange(box.Document, selection.Start, selection.End);
+        if (fragment.Blocks.Count == 0) return null;
+        if (fragment.Blocks is [ParagraphBlock only] && !NeedsJournalFormat(only, selection)) return null;
+        return fragment;
+    }
+
+    /// <summary>A single paragraph needs the journal format only if it is wholly selected and is a heading or list item.</summary>
+    private static bool NeedsJournalFormat(ParagraphBlock p, TextSelection selection)
+    {
+        if (p.Style == ParagraphStyle.Normal && p.List == ListKind.None) return false;
+        var whole = selection.Start.Paragraph is { } para
+            ? FlowDocumentMapper.ReadParagraph(para).PlainText
+            : p.PlainText;
+        return p.PlainText == whole;
+    }
+
+    /// <summary>
+    /// Inserts the fragment at the caret, replacing any selection, as one undo step. Images and files keep
+    /// pointing to the same encrypted file in the vault, so nothing is copied or lost. New block ids keep
+    /// pasted blocks distinct from the originals.
+    /// </summary>
+    public void InsertFragment(JournalDocument fragment)
+    {
+        foreach (var b in fragment.Blocks) b.Id = Guid.NewGuid();
+        box.BeginChange();
+        try
+        {
+            if (!box.Selection.IsEmpty) box.Selection.Text = "";
+            var target = box.CaretPosition.Paragraph;
+            var replaceEmptyLine = target is { Parent: FlowDocument } && IsEmpty(target);
+            var flow = Mapper.ToFlowDocument(fragment);
+            var blocks = flow.Blocks.ToList();
+            flow.Blocks.Clear();
+            InsertBlocksAtCaret(blocks);
+            // Pasting on an empty line uses that line instead of leaving it above the pasted content.
+            if (replaceEmptyLine && target!.Parent is FlowDocument doc) doc.Blocks.Remove(target);
+        }
+        finally
+        {
+            box.EndChange();
+        }
+    }
+
+    // ------------------------------------------------------------------ paragraphs and lists
+
     /// <summary>The top-level block (child of the document) that contains <paramref name="paragraph"/>.</summary>
     private static Block TopLevelBlock(WpfParagraph paragraph)
     {
@@ -109,7 +195,7 @@ public static class EditorOperations
         new TextRange(p.ContentStart, p.ContentEnd).Text.Trim().Length == 0 && FlowDocumentMapper.GetCheckBox(p) is null;
 
     /// <summary>Paragraphs that overlap the selection (or contain the caret).</summary>
-    public static IEnumerable<WpfParagraph> SelectedParagraphs(RichTextBox box)
+    public IEnumerable<WpfParagraph> SelectedParagraphs()
     {
         var start = box.Selection.Start;
         var end = box.Selection.End;
@@ -140,9 +226,9 @@ public static class EditorOperations
     }
 
     /// <summary>Turns the selected paragraphs into checklist items, or back into normal paragraphs (FR-EDT-08).</summary>
-    public static void ToggleChecklist(RichTextBox box)
+    public void ToggleChecklist()
     {
-        var paragraphs = SelectedParagraphs(box).Where(p => p.Parent is FlowDocument or Section).ToList();
+        var paragraphs = SelectedParagraphs().Where(p => p.Parent is FlowDocument or Section).ToList();
         if (paragraphs.Count == 0) return;
         bool makeChecklist = paragraphs.Any(p => FlowDocumentMapper.GetCheckBox(p) is null);
         box.BeginChange();
@@ -169,7 +255,7 @@ public static class EditorOperations
     }
 
     /// <summary>Ticks or unticks the checklist item at the caret (Ctrl+Enter). Returns false when not in a checklist.</summary>
-    public static bool ToggleChecked(RichTextBox box)
+    public bool ToggleChecked()
     {
         var p = box.CaretPosition.Paragraph;
         if (p is null || FlowDocumentMapper.GetCheckBox(p) is not { } cb) return false;
@@ -186,7 +272,7 @@ public static class EditorOperations
     }
 
     /// <summary>Indents or outdents checklist items or list items, up to 4 levels (FR-EDT-07). Returns false when not applicable.</summary>
-    public static bool Indent(RichTextBox box, int delta)
+    public bool Indent(int delta)
     {
         var p = box.CaretPosition.Paragraph;
         if (p is null) return false;
@@ -216,12 +302,12 @@ public static class EditorOperations
         return depth;
     }
 
-    public static void SetParagraphStyle(RichTextBox box, ParagraphStyle style)
+    public void SetParagraphStyle(ParagraphStyle style)
     {
         box.BeginChange();
         try
         {
-            foreach (var p in SelectedParagraphs(box))
+            foreach (var p in SelectedParagraphs())
             {
                 bool isChecklist = FlowDocumentMapper.GetCheckBox(p) is not null;
                 var margin = p.Margin;
@@ -232,7 +318,7 @@ public static class EditorOperations
         finally { box.EndChange(); }
     }
 
-    public static void ToggleTextDecoration(RichTextBox box, TextDecorationLocation location)
+    public void ToggleTextDecoration(TextDecorationLocation location)
     {
         var selection = box.Selection;
         var current = selection.GetPropertyValue(Inline.TextDecorationsProperty) as TextDecorationCollection;
@@ -242,7 +328,7 @@ public static class EditorOperations
         selection.ApplyPropertyValue(Inline.TextDecorationsProperty, updated);
     }
 
-    public static void ApplyColor(RichTextBox box, DependencyProperty property, Color? color)
+    public void ApplyColor(DependencyProperty property, Color? color)
     {
         if (color is { } c)
         {
@@ -273,7 +359,7 @@ public static class EditorOperations
     /// Called after Enter: if the previous paragraph was a checklist item, give the new paragraph a checkbox;
     /// a heading's following paragraph goes back to Normal.
     /// </summary>
-    public static void AfterEnter(RichTextBox box, WpfParagraph? previous)
+    public void AfterEnter(WpfParagraph? previous)
     {
         var current = box.CaretPosition.Paragraph;
         if (current is null || previous is null || ReferenceEquals(current, previous)) return;
@@ -296,7 +382,7 @@ public static class EditorOperations
     }
 
     /// <summary>True when the caret is in an empty checklist item (Enter there ends the checklist).</summary>
-    public static bool IsInEmptyChecklistItem(RichTextBox box)
+    public bool IsInEmptyChecklistItem()
     {
         var p = box.CaretPosition.Paragraph;
         return p is not null && FlowDocumentMapper.GetCheckBox(p) is not null &&
@@ -322,19 +408,8 @@ public static class EditorOperations
         return false;
     }
 
-    /// <summary>True when <paramref name="element"/> is hosted inside <paramref name="document"/>.</summary>
-    public static bool IsInDocument(DependencyObject element, FlowDocument document)
-    {
-        for (DependencyObject? d = element; d is not null; d = LogicalTreeHelper.GetParent(d) ?? (d is FrameworkElement fe ? fe.Parent : null))
-        {
-            if (ReferenceEquals(d, document)) return true;
-            if (d is FlowDocument) return false;
-        }
-        return false;
-    }
-
     /// <summary>Formatting at the caret or selection, for the toolbar (FR-EDT-10). Mixed values are null.</summary>
-    public static FormattingState ReadFormatting(RichTextBox box)
+    public FormattingState ReadFormatting()
     {
         var sel = box.Selection;
         var weight = sel.GetPropertyValue(TextElement.FontWeightProperty);

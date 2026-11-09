@@ -48,7 +48,7 @@ public class LogoTests
         var main = new MainWindow(new MainViewModel(h.Context));
         var unlock = new UnlockWindow(new UnlockViewModel(Session(), () => 0));
         var setup = new SetupWindow(new SetupViewModel(_ => Session(), () => Task.FromResult(true), h.Dialogs, () => 0, @"C:\j", null));
-        var settings = new SettingsWindow(new SettingsViewModel(new MinimalSettingsHost(Session()), h.Dialogs, new AppSettings()));
+        var settings = new SettingsWindow(new SettingsViewModel(new FakeSettingsHost(Session()), h.Dialogs, new AppSettings()));
         foreach (Window w in new Window[] { main, unlock, setup, settings })
             Assert.True(w.Icon is not null, $"{w.GetType().Name} has no icon");
 
@@ -61,19 +61,4 @@ public class LogoTests
         foreach (Window w in new Window[] { main, unlock, setup, settings }) w.Close();
         await Task.CompletedTask;
     });
-
-    private sealed class MinimalSettingsHost(VaultSession session) : ISettingsHost
-    {
-        public VaultSession Session => session;
-        public string VaultFolder => @"C:\vault";
-        public IReadOnlyList<string> AvailableBooks => [];
-        public IReadOnlyList<Journal.Core.Inspiration.QuoteCategory> QuoteCategories => [];
-        public int ImportedVerseCount => 0;
-        public int ImportedQuoteCount => 0;
-        public Task<string> ImportVersesAsync(string path) => Task.FromResult("");
-        public Task<string> ImportQuotesAsync(string path) => Task.FromResult("");
-        public Task MoveVaultAsync(string newFolder) => Task.CompletedTask;
-        public void ExportBackup(string zipPath) { }
-        public Task ApplySettingsAsync(AppSettings settings) => Task.CompletedTask;
-    }
 }

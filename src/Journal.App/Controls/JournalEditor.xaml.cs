@@ -36,6 +36,7 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
         Color.FromRgb(0xF5, 0xF5, 0xF4), Color.FromRgb(0xFE, 0xF0, 0x8A), Color.FromRgb(0xC7, 0xD2, 0xFE), Color.FromRgb(0xF0, 0xAB, 0xFC),
     ];
 
+    private readonly JournalDocumentEditor _document;
     private EntryTabViewModel? _tab;
     private bool _loading;
     private bool _syncing;
@@ -49,6 +50,7 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
     public JournalEditor()
     {
         InitializeComponent();
+        _document = new JournalDocumentEditor(Box);
         FontBox.ItemsSource = Fonts.SystemFontFamilies.Select(f => f.Source).OrderBy(n => n).ToList();
         SizeBox.ItemsSource = Sizes;
         BuildSwatches(TextSwatches, Palette, c => ApplyColor(TextElement.ForegroundProperty, c));
@@ -60,11 +62,13 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
         Box.PreviewDragOver += Box_PreviewDragOver;
         Box.PreviewDrop += Box_PreviewDrop;
         // Copy, cut, paste and drag keep checklists, images, files and headings (ISS-010).
-        JournalClipboard.Attach(Box, () => _tab is not null && !Box.IsReadOnly, () => _tab?.MarkDirty());
+        _document.AttachClipboard(() => _tab is not null && !Box.IsReadOnly, () => _tab?.MarkDirty());
         DataObject.AddPastingHandler(Box, Box_Pasting);
         DataContextChanged += (_, e) => Bind(e.OldValue as EntryTabViewModel, e.NewValue as EntryTabViewModel);
-        Loaded += (_, _) => Subscribe();
-        Unloaded += (_, _) => Unsubscribe();
+        Box.AddHandler(BlockEvents.ContentEditedEvent, new RoutedEventHandler(OnBlockEdited));
+        Box.AddHandler(BlockEvents.AttachmentActionEvent, new EventHandler<BlockActionEventArgs<AttachmentAction>>(OnAttachmentAction));
+        Box.AddHandler(BlockEvents.ImageActionEvent, new EventHandler<BlockActionEventArgs<ImageAction>>(OnImageAction));
+        Box.AddHandler(BlockEvents.ImageLoadEvent, new EventHandler<ImageLoadEventArgs>(OnImageLoad));
     }
 
     /// <summary>The RichTextBox (exposed for tests).</summary>
@@ -96,53 +100,46 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
     public JournalDocument Capture() => Mapper.FromFlowDocument(Box.Document);
 
     public void InsertImage(ImageBlock block) =>
-        EditorOperations.InsertBlockAtCaret(Box, FlowDocumentMapper.ImageContainer(block));
+        _document.InsertBlockAtCaret(FlowDocumentMapper.ImageContainer(block));
 
     public void InsertAttachment(AttachmentBlock block) =>
-        EditorOperations.InsertBlockAtCaret(Box, FlowDocumentMapper.AttachmentContainer(block));
+        _document.InsertBlockAtCaret(FlowDocumentMapper.AttachmentContainer(block));
 
-    private void Subscribe()
+    private void OnImageLoad(object? sender, ImageLoadEventArgs e)
     {
-        BlockEvents.ContentEdited += OnBlockEdited;
-        BlockEvents.AttachmentActionRequested += OnAttachmentAction;
-        BlockEvents.ImageActionRequested += OnImageAction;
+        e.Handled = true;
+        e.Result = _tab?.LoadImageAsync(e.Blob, e.DecodePixelWidth);
     }
 
-    private void Unsubscribe()
+    private void OnBlockEdited(object sender, RoutedEventArgs e)
     {
-        BlockEvents.ContentEdited -= OnBlockEdited;
-        BlockEvents.AttachmentActionRequested -= OnAttachmentAction;
-        BlockEvents.ImageActionRequested -= OnImageAction;
+        e.Handled = true;
+        if (!_loading) _tab?.MarkDirty();
     }
 
-    private bool Owns(object? sender) => sender is DependencyObject d && EditorOperations.IsInDocument(d, Box.Document);
-
-    private void OnBlockEdited(object? sender, EventArgs e)
+    private async void OnAttachmentAction(object? sender, BlockActionEventArgs<AttachmentAction> e)
     {
-        if (!_loading && Owns(sender)) _tab?.MarkDirty();
-    }
-
-    private async void OnAttachmentAction(object? sender, AttachmentAction action)
-    {
-        if (_tab is null || sender is not AttachmentChip chip || !Owns(chip)) return;
-        switch (action)
+        e.Handled = true;
+        if (_tab is null || e.OriginalSource is not AttachmentChip chip) return;
+        switch (e.Action)
         {
             case AttachmentAction.Open: await _tab.OpenAttachmentAsync(chip.ToBlock()); break;
             case AttachmentAction.SaveAs: await _tab.SaveAttachmentAsAsync(chip.ToBlock()); break;
             case AttachmentAction.Remove when !Box.IsReadOnly:
-                if (EditorOperations.RemoveHostedBlock(chip)) _tab.MarkDirty();
+                if (JournalDocumentEditor.RemoveHostedBlock(chip)) _tab.MarkDirty();
                 break;
         }
     }
 
-    private async void OnImageAction(object? sender, ImageAction action)
+    private async void OnImageAction(object? sender, BlockActionEventArgs<ImageAction> e)
     {
-        if (_tab is null || sender is not ImageBlockView view || !Owns(view)) return;
-        switch (action)
+        e.Handled = true;
+        if (_tab is null || e.OriginalSource is not ImageBlockView view) return;
+        switch (e.Action)
         {
             case ImageAction.View: await _tab.ViewImageAsync(view.ToBlock()); break;
             case ImageAction.Remove when !Box.IsReadOnly:
-                if (EditorOperations.RemoveHostedBlock(view)) _tab.MarkDirty();
+                if (JournalDocumentEditor.RemoveHostedBlock(view)) _tab.MarkDirty();
                 break;
         }
     }
@@ -150,7 +147,7 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
     private static void OnAnyCheckBoxClick(object sender, RoutedEventArgs e)
     {
         if (sender is not CheckBox cb || cb.Parent is not InlineUIContainer { Parent: Paragraph p }) return;
-        EditorOperations.ApplyCheckedDecoration(p, cb.IsChecked == true);
+        JournalDocumentEditor.ApplyCheckedDecoration(p, cb.IsChecked == true);
         BlockEvents.RaiseEdited(cb);
     }
 
@@ -171,29 +168,29 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
                 e.Handled = true;
                 break;
             case Key.Enter when mods == ModifierKeys.Control:
-                if (EditorOperations.ToggleChecked(Box))
+                if (_document.ToggleChecked())
                 {
                     _tab?.MarkDirty();
                     e.Handled = true;
                 }
                 break;
             case Key.Tab when mods is ModifierKeys.None or ModifierKeys.Shift:
-                if (EditorOperations.Indent(Box, mods == ModifierKeys.Shift ? -1 : 1))
+                if (_document.Indent(mods == ModifierKeys.Shift ? -1 : 1))
                 {
                     _tab?.MarkDirty();
                     e.Handled = true;
                 }
                 break;
             case Key.Enter when mods == ModifierKeys.None:
-                if (EditorOperations.IsInEmptyChecklistItem(Box))
+                if (_document.IsInEmptyChecklistItem())
                 {
-                    EditorOperations.RemoveCheckbox(Box.CaretPosition.Paragraph!);
+                    JournalDocumentEditor.RemoveCheckbox(Box.CaretPosition.Paragraph!);
                     _tab?.MarkDirty();
                     e.Handled = true;
                     break;
                 }
                 var previous = Box.CaretPosition.Paragraph;
-                Dispatcher.BeginInvoke(() => EditorOperations.AfterEnter(Box, previous), DispatcherPriority.Input);
+                Dispatcher.BeginInvoke(() => _document.AfterEnter(previous), DispatcherPriority.Input);
                 break;
         }
     }
@@ -243,7 +240,7 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
         _syncing = true;
         try
         {
-            var f = EditorOperations.ReadFormatting(Box);
+            var f = _document.ReadFormatting();
             BoldButton.IsChecked = f.IsBold;
             ItalicButton.IsChecked = f.IsItalic;
             UnderlineButton.IsChecked = f.IsUnderline;
@@ -267,14 +264,14 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
 
     private void Bold_Click(object sender, RoutedEventArgs e) { EditingCommands.ToggleBold.Execute(null, Box); AfterFormat(); }
     private void Italic_Click(object sender, RoutedEventArgs e) { EditingCommands.ToggleItalic.Execute(null, Box); AfterFormat(); }
-    private void Underline_Click(object sender, RoutedEventArgs e) { EditorOperations.ToggleTextDecoration(Box, TextDecorationLocation.Underline); AfterFormat(); }
-    private void Strike_Click(object sender, RoutedEventArgs e) { EditorOperations.ToggleTextDecoration(Box, TextDecorationLocation.Strikethrough); AfterFormat(); }
-    private void H1_Click(object sender, RoutedEventArgs e) { EditorOperations.SetParagraphStyle(Box, ParagraphStyle.Heading1); AfterFormat(); }
-    private void H2_Click(object sender, RoutedEventArgs e) { EditorOperations.SetParagraphStyle(Box, ParagraphStyle.Heading2); AfterFormat(); }
-    private void Normal_Click(object sender, RoutedEventArgs e) { EditorOperations.SetParagraphStyle(Box, ParagraphStyle.Normal); AfterFormat(); }
+    private void Underline_Click(object sender, RoutedEventArgs e) { _document.ToggleTextDecoration(TextDecorationLocation.Underline); AfterFormat(); }
+    private void Strike_Click(object sender, RoutedEventArgs e) { _document.ToggleTextDecoration(TextDecorationLocation.Strikethrough); AfterFormat(); }
+    private void H1_Click(object sender, RoutedEventArgs e) { _document.SetParagraphStyle(ParagraphStyle.Heading1); AfterFormat(); }
+    private void H2_Click(object sender, RoutedEventArgs e) { _document.SetParagraphStyle(ParagraphStyle.Heading2); AfterFormat(); }
+    private void Normal_Click(object sender, RoutedEventArgs e) { _document.SetParagraphStyle(ParagraphStyle.Normal); AfterFormat(); }
     private void Bullets_Click(object sender, RoutedEventArgs e) { EditingCommands.ToggleBullets.Execute(null, Box); AfterFormat(); }
     private void Numbers_Click(object sender, RoutedEventArgs e) { EditingCommands.ToggleNumbering.Execute(null, Box); AfterFormat(); }
-    private void Checklist_Click(object sender, RoutedEventArgs e) { EditorOperations.ToggleChecklist(Box); AfterFormat(); }
+    private void Checklist_Click(object sender, RoutedEventArgs e) { _document.ToggleChecklist(); AfterFormat(); }
     private void InsertImage_Click(object sender, RoutedEventArgs e) => _tab?.InsertImageCommand.Execute(null);
     private void AttachFile_Click(object sender, RoutedEventArgs e) => _tab?.AttachFileCommand.Execute(null);
 
@@ -314,7 +311,7 @@ public partial class JournalEditor : UserControl, IDocumentEditorHost
 
     private void ApplyColor(DependencyProperty property, Color? color)
     {
-        EditorOperations.ApplyColor(Box, property, color);
+        _document.ApplyColor(property, color);
         if (property == TextElement.ForegroundProperty)
         {
             ColorButton.IsChecked = false;

@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 (open questions answered, awaiting approval) |
-| **Date** | 2026-10-15 |
+| **Version** | 1.2 (as built, including changes through ISS-024) |
+| **Date** | 2026-11-04 |
 | **Platform** | Windows 10/11, .NET 10, WPF |
-| **Status** | Awaiting approval. Requirements and test cases follow after approval. |
+| **Status** | Approved 2026-10-15 and implemented. This document describes the code as it is; later changes are logged in [Issues.md](Issues.md). |
 
 ## 1. Purpose and scope
 
-A private, single-user desktop journal and planner for Windows. Each calendar day, past or future, has at most one entry. An entry is written in a simple word-processor-style editor that mixes formatted text, lists and checklists, inline images (each with a searchable caption) and attached data files. An entry can be split into tabs, one per tag. A month calendar highlights the days that have entries. Every day shows a Bible verse and a philosophy quote, both configurable. Everything is encrypted at rest and unlocked with **Windows Hello** (fingerprint, face or PIN), so there is no journal password to remember.
+A private, single-user desktop journal and planner for Windows. Each calendar day, past or future, has at most one entry. An entry is written in a simple word-processor-style editor that mixes formatted text, lists and checklists, inline images (each with a searchable caption) and attached data files. An entry can be split into tabs, one per tag. A month calendar highlights the days that have entries. Every day shows a Bible verse and a philosophy or literature quote, both configurable. Each day up to today can be marked sad, neutral or happy; the calendar tints those days and counts them. Everything is encrypted at rest and unlocked with **Windows Hello** (fingerprint, face or PIN), so there is no journal password to remember.
 
 **Out of scope for v1:** multi-user, cloud sync built into the app (the vault folder can be placed in OneDrive instead), mobile clients, collaborative editing, spell-check beyond what WPF provides.
 
@@ -17,7 +17,7 @@ A private, single-user desktop journal and planner for Windows. Each calendar da
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **.NET 10 WPF, MVVM** with CommunityToolkit.Mvvm and Microsoft.Extensions.DependencyInjection | Matches your toolchain; MVVM keeps UI logic testable. |
+| D1 | **.NET 10 WPF, MVVM** with CommunityToolkit.Mvvm; objects are wired by hand in `AppController`, with no DI container | Matches your toolchain; MVVM keeps UI logic testable. |
 | D2 | **Layered architecture**: `Journal.Core` (no UI, no OS), `Journal.Infrastructure` (crypto, storage, Windows Hello), `Journal.App` (WPF) | Domain logic and search are unit-testable without Windows Hello or a UI. |
 | D3 | **Own document model** (`JournalDocument` → `DocBlock` subclasses), mapped to and from WPF `FlowDocument` | Images and attachments become first-class objects with captions; avoids storing fragile XAML; makes text, captions and file names searchable. |
 | D4 | **Envelope encryption**: one random 256-bit *data key* encrypts everything with AES-256-GCM. The data key is stored only in *wrapped* form, once per unlock method. | Lets us add or replace unlock methods (new PC, new fingerprint) without re-encrypting the journal. |
@@ -35,11 +35,11 @@ A private, single-user desktop journal and planner for Windows. Each calendar da
 flowchart TB
     subgraph App["Journal.App (WPF, net10.0-windows)"]
         direction TB
-        Views["Views (XAML)<br/>MainWindow · UnlockWindow · SetupWizard<br/>SettingsWindow · SearchPanel"]
-        Controls["Custom controls<br/>MonthCalendarControl · JournalEditor (RichTextBox)<br/>ImageBlockView · AttachmentChip · TagBar"]
-        VMs["ViewModels<br/>MainViewModel · CalendarViewModel · EntryViewModel<br/>EntryTabViewModel · SearchViewModel · SettingsViewModel"]
-        Mapper["FlowDocumentMapper<br/>(JournalDocument ⇄ FlowDocument)"]
-        AppSvc["UI services<br/>DialogService · IdleMonitor · ClipboardImageReader"]
+        Views["Views (XAML)<br/>MainWindow · UnlockWindow · SetupWindow<br/>SettingsWindow"]
+        Controls["Custom controls<br/>MonthCalendarControl · JournalEditor (RichTextBox)<br/>ImageBlockView · AttachmentChip · ChecklistCheckBox<br/>MoodFace · MoodCount · ColumnPanel"]
+        VMs["ViewModels<br/>MainViewModel · CalendarViewModel · EntryViewModel<br/>EntryTabViewModel · SearchViewModel · MoodSummaryViewModel<br/>UnlockViewModel · SetupViewModel · SettingsViewModel"]
+        Mapper["Editor<br/>FlowDocumentMapper (JournalDocument ⇄ FlowDocument)<br/>JournalDocumentEditor · JournalClipboard"]
+        AppSvc["App services<br/>AppController · LockCoordinator · MainWindowCloser<br/>SettingsActions · DialogService · ImageCache · AppInfo"]
         Views --> VMs
         Controls --> Mapper
         Views --> Controls
@@ -50,7 +50,7 @@ flowchart TB
         direction TB
         Domain["Domain model<br/>JournalEntry · EntryTab · Tag<br/>JournalDocument · DocBlock hierarchy"]
         Services["Application services<br/>JournalService (facade) · VaultSession<br/>SearchService · DailyInspirationService"]
-        Ports["Ports (interfaces)<br/>IEntryRepository · IBlobStore · ICatalogStore<br/>IKeyProtector · IContentCipher · IVerseSource · IQuoteSource<br/>ISettingsStore · IClock"]
+        Ports["Ports (interfaces)<br/>IEntryRepository · IBlobStore · ICatalogStore · IUserListStore<br/>IVaultHeaderStore · IKeyProtector · IMachineIdentity<br/>IVerseSource · IQuoteSource · ISettingsStore · IClock · IScheduler"]
         Search["Search engine<br/>SearchQueryParser · InMemorySearchIndex · SnippetBuilder"]
         Services --> Domain
         Services --> Ports
@@ -59,10 +59,10 @@ flowchart TB
 
     subgraph Infra["Journal.Infrastructure (net10.0-windows10.0.19041)"]
         direction TB
-        Crypto["Crypto<br/>AesGcmContentCipher · KeyWrapper · Hkdf"]
-        Keys["Key protectors<br/>WindowsHelloKeyProtector · RecoveryCodeKeyProtector"]
-        Store["File vault<br/>FileEntryRepository · FileBlobStore<br/>FileCatalogStore · VaultHeaderStore"]
-        Content["Content sources<br/>EmbeddedVerseSource · EmbeddedQuoteSource<br/>ImportedListSource"]
+        Crypto["Crypto<br/>VaultCrypto · KeyWrapper · KeyDerivation"]
+        Keys["Key protectors<br/>WindowsHelloKeyProtector · HelloGatedDpapiProtector<br/>RecoveryCodeKeyProtector"]
+        Store["File vault<br/>FileEntryRepository · FileBlobStore · FileCatalogStore<br/>FileUserListStore · JsonVaultHeaderStore · BackupService"]
+        Content["Content sources<br/>EmbeddedVerseSource · EmbeddedQuoteSource"]
         Settings["JsonSettingsStore"]
     end
 
@@ -76,7 +76,7 @@ flowchart TB
     Store --> Disk
 ```
 
-**Dependency rule:** arrows point inward. `Journal.Core` references nothing else in the solution. `Journal.Infrastructure` implements Core's interfaces. `Journal.App` composes everything in `App.xaml.cs` through DI.
+**Dependency rule:** arrows point inward. `Journal.Core` references nothing else in the solution. `Journal.Infrastructure` implements Core's interfaces. `App.xaml.cs` starts `AppController`, which composes everything by hand. Imported lists use `ListVerseSource` and `ListQuoteSource` from Core.
 
 ### 3.1 Solution layout
 
@@ -85,51 +85,58 @@ Journal/
 ├─ Journal.sln
 ├─ docs/                         Architecture.md, Requirements.md, TestCases.md
 ├─ src/
-│  ├─ Journal.Core/              Domain, Documents, Search, Inspiration, Security (abstractions), Services
-│  ├─ Journal.Infrastructure/    Crypto, Hello, Storage, Content (embedded verses.json, quotes.json), Settings
-│  └─ Journal.App/               Views, ViewModels, Controls, Editor (FlowDocumentMapper), Services, Themes
+│  ├─ Journal.Core/              Domain, Documents, Calendar, Persistence, Search, Inspiration, Security, Services, Settings
+│  ├─ Journal.Infrastructure/    Crypto, Hello, Storage, Content (embedded verses.json, quotes.json), Logging
+│  └─ Journal.App/               Views, ViewModels, Controls, Editor (FlowDocumentMapper, JournalDocumentEditor), Services, Themes
 └─ tests/
-   ├─ Journal.Core.Tests/            xUnit: domain, document model, search, inspiration, session
-   ├─ Journal.Infrastructure.Tests/  xUnit: crypto round trips, tamper detection, file vault, recovery code
-   └─ Journal.App.Tests/             xUnit (STA): FlowDocumentMapper round trips, ViewModels with fakes
+   ├─ Journal.Core.Tests/            xUnit: domain, document model, search, inspiration, session, moods
+   ├─ Journal.Infrastructure.Tests/  xUnit: crypto round trips, tamper detection, file vault, recovery code, content
+   └─ Journal.App.Tests/             xUnit (STA): mapper round trips, view models with fakes, editor and clipboard,
+                                     real windows shown off screen (layout), locking and exit
 ```
 
 ## 4. Screen design
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Journal                                                   🔒 Lock   ⚙ Settings   │
+│ Journal (quill logo)                                             Settings   Lock │
 ├───────────────────────────┬──────────────────────────────────────────────────────┤
-│  ◀   October 2026    ▶    │  Thursday, October 15, 2026                           │
-│  Su Mo Tu We Th Fr Sa     │ ┌──────────────────────────────────────────────────┐ │
-│               1  2  3     │ │ "Trust in Yahweh with all your heart..."         │ │
-│   4 [5] 6  7 [8] 9 10     │ │                                  Proverbs 3:5 WEB │ │
-│  11 12 [13]14 (15)16 17   │ │ "You have power over your mind, not outside      │ │
-│  18 19 20 21 22 23 24     │ │  events."                     Marcus Aurelius   │ │
-│  25 26 27 28 29 30 31     │ └──────────────────────────────────────────────────┘ │
-│        [Today]            │  Tags: [family ×] [work ×] [+ add tag]               │
-│ ───────────────────────── │ ┌─────────┬────────┬────────┬───┐                    │
-│ 🔍 [tag:family garden   ] │ │ Journal │ family │ work   │ + │                    │
-│                           │ ├─────────┴────────┴────────┴───┴──────────────────┐ │
-│ Results (3)               │ │ Font▾ 12▾ A▾ ▇▾ │ B I U S │ H1 H2 • 1. ☐ │ 🖼 📎   │ │
-│ ▸ Oct 13  family          │ │                                                  │ │
-│   ...planted the garden.. │ │ Spent the morning in the garden with the kids.   │ │
-│ ▸ Sep 28  caption         │ │ ┌──────────────────────────┐                     │ │
-│   "Garden at sunrise"     │ │ │       [ photo ]          │                     │ │
-│ ▸ Aug 02  family          │ │ │ Garden at sunrise ✎      │  ← caption         │ │
-│                           │ │ └──────────────────────────┘                     │ │
-│                           │ │ Then we went to church.                          │ │
-│                           │ │ 📎 harvest-weights.xlsx (24 KB) — tomato yields  │ │
+│   <   October 2026    >   │ Thursday, October 15, 2026      :(  :|  :)    [del]  │
+│   Su Mo Tu We Th Fr Sa    │ ┌──────────────────────────────────────────────────┐ │
+│                1  2  3    │ │ VERSE                    LITERATURE              │ │
+│    4 [5] 6  7 [8] 9 10    │ │ Trust in Yahweh with...  All the world's a...    │ │
+│   11 12 [13]14 (15)16 17  │ │ Proverbs 3:5 WEB  Copy   Shakespeare  Copy       │ │
+│   18 19 20 21 22 23 24    │ └──────────────────────────────────────────────────┘ │
+│   25 26 27 28 29 30 31    │ Tags: [family x] [work x] [+ add tag]                │
+│   Today  o entry  . open  │ [ Journal ][ family ][ work ]              [ + Tab ] │
+│ ------------------------- │ ┌──────────────────────────────────────────────────┐ │
+│ MOODS                     │ │ Font v  12 v  A  H | B I U S | H1 H2 P | * 1. [] │ │
+│ 30 days     :(2 :|1 :)2   │ │ Image  File                                      │ │
+│ 12 months   :(2 :|1 :)2   │ │                                                  │ │
+│ ------------------------- │ │ Spent the morning in the garden with the kids.   │ │
+│ Search: tag:family garden │ │ +------------------------+                       │ │
+│ Results (3)               │ │ |       [ photo ]        |                       │ │
+│ > Oct 13  family          │ │ | Garden at sunrise      |  <- caption           │ │
+│   ...planted the garden.. │ │ +------------------------+                       │ │
+│ > Sep 28  caption         │ │ [file] harvest-weights.xlsx (24 KB), yields      │ │
+│                           │ └──────────────────────────────────────────────────┘ │
 ├───────────────────────────┴──────────────────────────────────────────────────────┤
-│ Saved 10:42 · 3 tabs · auto-lock in 14 min                                        │
+│ Saved 10:42                                  Locks after 10 min without activity │
 └──────────────────────────────────────────────────────────────────────────────────┘
   [5] = day with an entry (highlighted)   (15) = today / selected
+  :( :| :) = sad, neutral, happy. A day with a mood is tinted (red = sad, green = happy,
+  normal = neutral) and shows a small face. The MOODS card counts them.
   future days with an entry use the same highlight with a dashed outline (planned)
+  the label over the quote is its category: PHILOSOPHY or LITERATURE
 ```
 
 **Tabs and tags.** Every entry starts with one untagged tab named **Journal**. Adding a tab asks for a tag (autocomplete from existing tags); the tab is titled with that tag. The entry's tag set is the union of its tab tags plus any extra tags added on the tag bar, so an entry can be tagged without splitting it into tabs.
 
-**Editor.** A `RichTextBox` with a small toolbar: font family, font size, text color, highlight color, bold, italic, underline, strikethrough, Heading 1, Heading 2, bulleted list, numbered list, checklist, Insert Image (file picker, paste from clipboard or drag-drop) and Attach File. Lists can be indented (Tab / Shift+Tab, up to 4 levels). A checklist item shows a checkbox you can tick with the mouse or Ctrl+Enter; ticked items are shown with strikethrough. The font list is the fonts installed in Windows; colors come from a 16-swatch palette plus a custom picker. Images are placed on their own line between paragraphs at the caret, with an editable caption beneath. Attached files appear as a chip showing the name, size and description; double-click opens it, right-click offers *Save As*, *Edit description* and *Remove*.
+**Editor.** A `RichTextBox` with a small toolbar: font family, font size, text color, highlight color, bold, italic, underline, strikethrough, Heading 1, Heading 2, bulleted list, numbered list, checklist, Insert Image (file picker, paste from clipboard or drag-drop) and Attach File. Lists can be indented (Tab / Shift+Tab, up to 4 levels). A checklist item shows a checkbox you can tick with the mouse or Ctrl+Enter; ticked items are shown with strikethrough. The font list is the fonts installed in Windows; colors come from a 16-swatch palette plus a custom picker. Images are placed on their own line between paragraphs at the caret, with an editable caption beneath. Attached files appear as a chip showing the name, size and description; double-click opens it, right-click offers *Save As*, *Edit description* and *Remove*. Copy, cut, paste and drag within the journal keep all of this (§9).
+
+**Mood.** Three faces beside the day's heading set the day's mood; clicking the chosen face again clears it (§8.1a).
+
+**Version.** Settings → General and the unlock window show the app's name and version.
 
 ## 5. Domain and document model
 
@@ -137,28 +144,37 @@ Journal/
 classDiagram
     direction LR
     class JournalEntry {
-        +EntryId Id
         +DateOnly Date
         +DateTimeOffset CreatedUtc
         +DateTimeOffset ModifiedUtc
         +IReadOnlyList~EntryTab~ Tabs
         +IReadOnlySet~Tag~ ExtraTags
         +DailyInspiration Inspiration
-        +IReadOnlySet~Tag~ AllTags()
+        +bool IsInspirationPinned
+        +Mood Mood
+        +void SetMood(Mood mood, DateOnly today)
+        +IReadOnlyList~Tag~ AllTags()
         +EntryTab AddTab(Tag tag)
-        +void RemoveTab(TabId id)
-        +void RetagTab(TabId id, Tag tag)
-        +void AddTag(Tag tag)
-        +void RemoveTag(Tag tag)
+        +void RemoveTab(Guid tabId)
+        +void RetagTab(Guid tabId, Tag tag)
+        +void MoveTab(Guid tabId, int newIndex)
+        +bool AddTag(Tag tag)
+        +bool RemoveTag(Tag tag)
         +bool IsEmpty()
         +IEnumerable~BlobRef~ ReferencedBlobs()
     }
     class EntryTab {
-        +TabId Id
+        +Guid Id
         +Tag? Tag
         +string Title
-        +int Order
         +JournalDocument Document
+    }
+    class Mood {
+        <<enum>>
+        None
+        Sad
+        Neutral
+        Happy
     }
     class Tag {
         <<value object>>
@@ -191,18 +207,23 @@ classDiagram
         +string ExtractPlainText()
         +IEnumerable~ImageBlock~ Images()
         +IEnumerable~AttachmentBlock~ Attachments()
+        +IEnumerable~ParagraphBlock~ Paragraphs()
+        +bool IsEmpty()
+        +IEnumerable~BlobRef~ ReferencedBlobs()
     }
     class DocBlock {
         <<abstract>>
-        +BlockId Id
+        +Guid Id
         +abstract void Accept(IDocBlockVisitor v)
+        +abstract bool IsEmpty()
+        +virtual IEnumerable~BlobRef~ ReferencedBlobs()
     }
     class ParagraphBlock {
         +ParagraphStyle Style
         +ListKind List
         +int ListLevel
         +bool IsChecked
-        +TextAlignment Alignment
+        +TextAlign Alignment
         +IList~TextRun~ Runs
         +string PlainText
     }
@@ -273,6 +294,7 @@ classDiagram
     JournalEntry "1" *-- "1..*" EntryTab
     JournalEntry "1" o-- "*" Tag : ExtraTags
     JournalEntry "1" *-- "1" DailyInspiration
+    JournalEntry --> Mood
     DailyInspiration o-- Verse
     DailyInspiration o-- Quote
     EntryTab o-- "0..1" Tag
@@ -297,8 +319,11 @@ classDiagram
 - A run's null font, size or color means "use the default", so documents stay small and follow future theme changes.
 - `IsChecked` is only meaningful when `List == Checklist`; consecutive list paragraphs with the same kind and level form one list, and numbering is computed when rendering, not stored.
 - At least one tab; at most one untagged tab; no two tabs share a tag.
+- A mood can't be set on a day after today (`SetMood` refuses it). A mood alone keeps the entry: `IsEmpty` is false while a mood is set.
 - Tags are case-insensitive, trimmed, 1–40 characters, no commas; `Tag.Normalized` is the lower-invariant form used for matching.
 - Removing a tab or block does not delete its blobs immediately. Orphaned blobs are removed by `JournalService.CollectGarbageAsync` when the journal locks or unlocks, so undo inside the editor stays safe.
+
+**Blocks answer for themselves.** Each block says whether it is empty and which vault files it uses, and `JournalDocument` asks its blocks. Code that must handle every kind of block, such as `FlowDocumentMapper`, implements `IDocBlockVisitor`, so a new kind won't compile until it is handled.
 
 **Serialization:** `System.Text.Json` with polymorphic `DocBlock` (`[JsonDerivedType]` discriminators `p`, `img`, `file`) and a `formatVersion` field on every persisted object for future migrations.
 
@@ -374,98 +399,109 @@ classDiagram
     direction TB
     class IKeyProtector {
         <<interface>>
-        +KeySlotType SlotType
-        +bool IsAvailable()
-        +Task~KeySlot~ ProtectAsync(SecretKey dataKey, VaultHeader header)
+        +string SlotType
+        +Task~bool~ IsAvailableAsync()
+        +Task~KeySlot~ ProtectAsync(SecretKey dataKey, VaultHeader header, UnlockContext ctx)
         +Task~SecretKey~ UnprotectAsync(KeySlot slot, VaultHeader header, UnlockContext ctx)
     }
     class WindowsHelloKeyProtector {
         -IHelloCredentialApi hello
-        -IKeyWrapper wrapper
-        +Task~bool~ VerifyDeterministicSignatureAsync()
+        -IMachineIdentity machine
     }
-    class RecoveryCodeKeyProtector {
-        -IKeyWrapper wrapper
-        +RecoveryCode Generate()
-    }
+    class RecoveryCodeKeyProtector
     class HelloGatedDpapiProtector {
         -IUserConsentApi consent
+        -IMachineIdentity machine
     }
     class IHelloCredentialApi {
         <<interface>>
         +Task~bool~ IsSupportedAsync()
-        +Task CreateAsync(string name)
-        +Task~byte[]~ SignAsync(string name, byte[] challenge)
+        +Task CreateAsync(string name, nint window, CancellationToken ct)
+        +Task~byte[]~ SignAsync(string name, byte[] data, nint window, CancellationToken ct)
         +Task DeleteAsync(string name)
     }
+    class IUserConsentApi {
+        <<interface>>
+        +Task~bool~ IsAvailableAsync()
+        +Task~bool~ VerifyAsync(string message, nint window, CancellationToken ct)
+    }
     class WinRtHelloCredentialApi
+    class WinRtUserConsentApi
     class RecoveryCode {
         <<value object>>
         +string Formatted
+        +static RecoveryCode Generate()
         +static bool TryParse(string, out RecoveryCode)
     }
     class SecretKey {
         <<IDisposable>>
-        -byte[] pinnedBytes
         +ReadOnlySpan~byte~ Span
         +static SecretKey Generate()
         +void Dispose()
     }
-    class IKeyWrapper {
-        <<interface>>
+    class KeyWrapper {
+        <<static>>
         +byte[] Wrap(SecretKey kek, SecretKey key, byte[] aad)
         +SecretKey Unwrap(SecretKey kek, byte[] wrapped, byte[] aad)
     }
-    class IContentCipher {
-        <<interface>>
-        +byte[] Encrypt(ReadOnlySpan~byte~ plain, CipherContext ctx)
-        +byte[] Decrypt(ReadOnlySpan~byte~ sealed, CipherContext ctx)
-        +Stream EncryptStream(Stream plain, CipherContext ctx)
-        +Stream DecryptStream(Stream sealed, CipherContext ctx)
+    class KeyDerivation {
+        <<static>>
+        +SecretKey HelloKek(signature, challenge)
+        +SecretKey RecoveryKek(RecoveryCode code, byte[] salt, int iterations)
+        +SecretKey SubKey(SecretKey dataKey, string purpose)
     }
-    class AesGcmContentCipher {
-        -SecretKey dataKey
+    class VaultCrypto {
+        <<IDisposable>>
+        +Guid VaultId
+        +string EntryFileName(DateOnly date)
+        +byte[] Seal(FileKind kind, string logicalId, plain)
+        +byte[] Open(FileKind kind, string logicalId, sealed)
+        +Task EncryptStreamAsync(input, output, id)
+        +Task DecryptStreamAsync(input, output, id)
     }
     class VaultSession {
+        +VaultHeader? Header
         +bool IsUnlocked
-        +event Locked
+        +SecretKey DataKey
+        +bool HasHelloSlotForThisMachine
+        +UnlockThrottle Throttle
         +event Unlocked
-        +Task~UnlockResult~ UnlockWithHelloAsync()
-        +Task~UnlockResult~ UnlockWithRecoveryCodeAsync(RecoveryCode code)
-        +void Lock(LockReason reason)
-        +IContentCipher Cipher
-        +IFileNamer FileNamer
-    }
-    class VaultInitializer {
-        +Task~SetupResult~ CreateVaultAsync(string folder)
-        +Task ReEnrollHelloAsync()
+        +event Locked
+        +Task LoadHeaderAsync()
+        +void RegisterBeforeLock(handler)
+        +Task UnlockWithHelloAsync(nint window, CancellationToken ct)
+        +Task UnlockWithRecoveryCodeAsync(RecoveryCode code)
+        +Task LockAsync(LockReason reason)
+        +Task~SetupResult~ CreateVaultAsync(bool useHello, nint window, CancellationToken ct)
+        +Task EnrollHelloAsync(nint window)
         +Task~RecoveryCode~ RegenerateRecoveryCodeAsync()
+        +Task RemoveHelloSlotAsync(string machineName)
     }
     class AutoLockPolicy {
-        +TimeSpan IdleTimeout
-        +bool LockOnSessionLock
+        +TimeSpan? Timeout
+        +TimeSpan? Remaining
+        +bool IsExpired
+        +event LockRequested
         +void OnActivity()
-        +void Tick(DateTimeOffset now)
-    }
-    class HmacFileNamer {
-        +string EntryFileName(DateOnly date)
+        +void Tick()
     }
 
     IKeyProtector <|.. WindowsHelloKeyProtector
     IKeyProtector <|.. RecoveryCodeKeyProtector
     IKeyProtector <|.. HelloGatedDpapiProtector
     WindowsHelloKeyProtector --> IHelloCredentialApi
+    HelloGatedDpapiProtector --> IUserConsentApi
     IHelloCredentialApi <|.. WinRtHelloCredentialApi
-    WindowsHelloKeyProtector --> IKeyWrapper
-    RecoveryCodeKeyProtector --> IKeyWrapper
+    IUserConsentApi <|.. WinRtUserConsentApi
+    WindowsHelloKeyProtector ..> KeyWrapper
+    WindowsHelloKeyProtector ..> KeyDerivation
+    RecoveryCodeKeyProtector ..> KeyWrapper
+    RecoveryCodeKeyProtector ..> KeyDerivation
     RecoveryCodeKeyProtector ..> RecoveryCode
-    IContentCipher <|.. AesGcmContentCipher
-    AesGcmContentCipher --> SecretKey
     VaultSession --> "1..*" IKeyProtector
-    VaultSession --> IContentCipher
-    VaultSession --> HmacFileNamer
-    VaultInitializer --> IKeyProtector
-    AutoLockPolicy --> VaultSession : Lock()
+    VaultSession --> SecretKey
+    VaultCrypto ..> KeyDerivation
+    AutoLockPolicy ..> VaultSession : lock requested
 ```
 
 `IKeyProtector` is a **Strategy**: the session tries Windows Hello first and offers the recovery code as an alternative on the unlock screen. Tests use a `FakeKeyProtector` so nothing in the test suite needs real Windows Hello.
@@ -479,26 +515,36 @@ sequenceDiagram
     participant VS as VaultSession
     participant HP as WindowsHelloKeyProtector
     participant WH as Windows Hello (TPM)
-    participant CS as FileCatalogStore
-    participant SI as InMemorySearchIndex
+    participant AC as AppController
+    participant VC as VaultServices
     participant MW as MainWindow
 
-    User->>UW: launch app
-    UW->>VS: UnlockWithHelloAsync()
-    VS->>HP: UnprotectAsync(helloSlot, header)
-    HP->>WH: RequestSignAsync(challenge)
+    User->>UW: launch app, or the journal locked
+    UW->>VS: LoadHeaderAsync()
+    Note over UW,User: Nothing is asked until the user acts (ISS-008)
+    User->>UW: click Unlock with Windows Hello, or press Enter
+    UW->>UW: show "Waiting for Windows Hello..."
+    UW->>VS: UnlockWithHelloAsync(window, cancellation)
+    VS->>HP: UnprotectAsync(helloSlot, header, context)
+    HP->>WH: allow the dialog to the foreground, then RequestSignAsync(challenge)
     WH-->>User: fingerprint / face / PIN prompt
     User-->>WH: verified
     WH-->>HP: signature
     HP->>HP: HKDF → KEK, AES-GCM unwrap
     HP-->>VS: SecretKey dataKey
-    VS->>CS: LoadAsync()
-    CS-->>VS: Catalog (dates, tags, text)
-    VS->>SI: Rebuild(catalog)
-    VS-->>UW: UnlockResult.Success
-    UW->>MW: show, select today
-    Note over UW,User: If Hello fails or is cancelled, the window offers<br/>"Retry Windows Hello" and "Use recovery code"
+    VS-->>UW: unlocked
+    UW->>AC: Unlocked
+    AC->>VC: OpenAsync: load catalog, rebuild search index, remove unused files
+    AC->>MW: show, select today
+    Note over UW,User: If Hello fails or is cancelled, the window says so and offers<br/>Unlock with Windows Hello again and Use recovery code
 ```
+
+**Where the dialog appears.** The Windows Hello key-signing dialog belongs to Windows and takes no window: it always opens on the main display, and Windows refuses to let an app move or close it (ISS-007, ISS-009). So:
+
+- on a side display, the unlock window says the dialog opens on the main display;
+- Journal allows the dialog to take the foreground just before asking, and doesn't pull its own window forward at that moment (ISS-023);
+- while a request waits, the unlock window says how to find the dialog if it can't be seen;
+- closing the window, exiting or using the recovery code cancels a waiting request. The dialog itself stays until the user cancels it.
 
 ## 7. Persistence
 
@@ -510,72 +556,87 @@ classDiagram
         +Task~JournalEntry?~ GetAsync(DateOnly date)
         +Task SaveAsync(JournalEntry entry)
         +Task DeleteAsync(DateOnly date)
+        +Task LoadAllAsync()
     }
     class IBlobStore {
         <<interface>>
         +Task~BlobRef~ PutAsync(Stream content)
-        +Task~Stream~ OpenReadAsync(BlobRef blob)
-        +Task DeleteAsync(BlobRef blob)
-        +IAsyncEnumerable~BlobRef~ ListAsync()
+        +Task CopyToAsync(BlobRef blob, Stream destination)
+        +Task DeleteAsync(Guid blobId)
+        +Task ListAsync()
+        +bool Exists(Guid blobId)
     }
     class ICatalogStore {
         <<interface>>
-        +Task~Catalog~ LoadAsync()
+        +Task~Catalog?~ LoadAsync()
         +Task SaveAsync(Catalog catalog)
+    }
+    class IUserListStore {
+        <<interface>>
+        +Task LoadVersesAsync()
+        +Task SaveVersesAsync(verses)
+        +Task LoadQuotesAsync()
+        +Task SaveQuotesAsync(quotes)
     }
     class Catalog {
         +IReadOnlyCollection~CatalogEntry~ Entries
+        +CatalogEntry? Get(DateOnly date)
+        +bool Contains(DateOnly date)
         +void Upsert(CatalogEntry e)
-        +void Remove(DateOnly d)
-        +ISet~DateOnly~ DatesInMonth(int year, int month)
-        +IReadOnlyCollection~Tag~ AllTags()
+        +bool Remove(DateOnly d)
+        +ISet~DateOnly~ DatesInRange(from, to)
+        +ISet~DateOnly~ DatesWithOpenItems(from, to)
+        +IReadOnlyDictionary MoodsInRange(from, to)
+        +MoodCounts CountMoods(from, to)
+        +IReadOnlyList~string~ AllTags()
+        +ISet~Guid~ ReferencedBlobIds()
     }
     class CatalogEntry {
         +DateOnly Date
-        +IReadOnlyList~Tag~ Tags
+        +IReadOnlyList~string~ Tags
         +IReadOnlyList~CatalogTab~ Tabs
+        +int OpenChecklistItems
+        +int DoneChecklistItems
+        +IReadOnlyList~Guid~ BlobIds
+        +Mood Mood
         +static CatalogEntry From(JournalEntry e)
     }
     class CatalogTab {
-        +TabId Id
+        +Guid Id
         +string Title
+        +string? Tag
         +string BodyText
         +IReadOnlyList~string~ ImageCaptions
         +IReadOnlyList~string~ AttachmentText
-        +int OpenChecklistItems
-        +int DoneChecklistItems
     }
     class FileEntryRepository
     class FileBlobStore
     class FileCatalogStore
+    class FileUserListStore
     class AtomicFileWriter {
         +Task WriteAsync(string path, byte[] data)
     }
-    class EncryptedFileFormat {
-        +byte[] Seal(FileKind kind, string logicalId, byte[] plain)
-        +byte[] Open(FileKind kind, string logicalId, byte[] sealed)
+    class VaultCrypto {
+        +byte[] Seal(FileKind kind, string logicalId, plain)
+        +byte[] Open(FileKind kind, string logicalId, sealed)
     }
-    class BlobGarbageCollector {
-        +Task~int~ CollectAsync(Catalog c, IEntryRepository r)
-    }
-    class VaultSession
 
     IEntryRepository <|.. FileEntryRepository
     IBlobStore <|.. FileBlobStore
     ICatalogStore <|.. FileCatalogStore
-    FileEntryRepository --> EncryptedFileFormat
-    FileBlobStore --> EncryptedFileFormat
-    FileCatalogStore --> EncryptedFileFormat
+    IUserListStore <|.. FileUserListStore
+    FileEntryRepository --> VaultCrypto
+    FileBlobStore --> VaultCrypto
+    FileCatalogStore --> VaultCrypto
+    FileUserListStore --> VaultCrypto
     FileEntryRepository --> AtomicFileWriter
     FileCatalogStore --> AtomicFileWriter
-    EncryptedFileFormat --> VaultSession : Cipher
     ICatalogStore ..> Catalog
     Catalog *-- CatalogEntry
     CatalogEntry *-- CatalogTab
-    BlobGarbageCollector --> IBlobStore
 ```
 
-**Saving:** the editor marks the entry dirty on every change. `JournalService` saves 2 seconds after the last keystroke, and also when you switch day, switch tab, lock or close. A save writes the entry file, then updates the catalog. If the catalog is ever missing or fails to decrypt, it is rebuilt from the entry files at unlock. An entry whose tabs are all empty is deleted rather than saved, so the calendar only highlights days with real content.
+**Saving:** the editor marks the entry dirty on every change. `JournalService` saves 2 seconds after the last keystroke, and also when you switch day, switch tab, lock or close. A save writes the entry file, then updates the catalog. If the catalog is ever missing or fails to decrypt, it is rebuilt from the entry files at unlock. An entry with no text, images, files, tags or mood is deleted rather than saved, so the calendar only highlights days with real content. Choosing a mood saves at once, so the calendar and the counts update immediately. `JournalService.CollectGarbageAsync` removes vault files no entry uses, at unlock and at lock.
 
 ## 8. Services: search and daily inspiration
 
@@ -584,17 +645,28 @@ classDiagram
     direction TB
     class JournalService {
         <<facade>>
-        +Task~JournalEntry~ OpenDayAsync(DateOnly date)
-        +Task SaveAsync(JournalEntry entry)
-        +Task~BlobRef~ AddImageAsync(string path)
-        +Task~BlobRef~ AddAttachmentAsync(string path)
-        +Task~string~ ExportAttachmentToTempAsync(AttachmentBlock a)
-        +ISet~DateOnly~ EntryDatesInMonth(int y, int m)
-        +IReadOnlyCollection~Tag~ AllTags()
-        +event EntrySaved
+        +SearchService Search
+        +DailyInspirationService Inspiration
+        +Catalog Catalog
+        +event EntryChanged
+        +Task InitializeAsync()
+        +Task~EntryLoadResult~ OpenDayAsync(DateOnly date)
+        +Task~SaveOutcome~ SaveAsync(JournalEntry entry)
+        +Task DeleteEntryAsync(DateOnly date)
+        +DailyInspiration Shuffle(JournalEntry entry)
+        +Task~BlobRef~ AddBlobAsync(Stream content)
+        +Task CopyBlobToAsync(BlobRef blob, Stream destination)
+        +Task~byte[]~ ReadBlobAsync(BlobRef blob)
+        +Task~int~ CollectGarbageAsync(protectedIds)
+        +ISet~DateOnly~ EntryDates(from, to)
+        +ISet~DateOnly~ OpenItemDates(from, to)
+        +IReadOnlyDictionary Moods(from, to)
+        +MoodSummary GetMoodSummary()
+        +IReadOnlyList~string~ AllTags()
+        +bool HasEntry(DateOnly date)
     }
     class SearchService {
-        +IReadOnlyList~SearchHit~ Search(string queryText)
+        +SearchResult Search(string text)
     }
     class SearchQueryParser {
         +SearchQuery Parse(string text)
@@ -613,15 +685,16 @@ classDiagram
         +void Rebuild(Catalog c)
         +void Upsert(CatalogEntry e)
         +void Remove(DateOnly d)
-        +IEnumerable~SearchHit~ Query(SearchQuery q)
+        +IReadOnlyList~SearchHit~ Query(SearchQuery q, int maxHits)
     }
     class InMemorySearchIndex
     class SearchHit {
         +DateOnly Date
-        +TabId? Tab
+        +Guid? TabId
+        +string TabTitle
         +MatchSource Source
         +string Snippet
-        +double Score
+        +IReadOnlyList~HighlightRange~ Highlights
     }
     class MatchSource {
         <<enum>>
@@ -631,11 +704,13 @@ classDiagram
         Tag
     }
     class SnippetBuilder {
-        +string Build(string text, IEnumerable~string~ terms, int radius)
+        +static Build(text, terms)
     }
     class DailyInspirationService {
-        +DailyInspiration For(DateOnly date, InspirationSettings s)
-        +DailyInspiration Shuffle(DateOnly date, InspirationSettings s)
+        +InspirationResult For(DateOnly date, InspirationSettings s, Guid vaultId)
+        +DailyInspiration Shuffle(DailyInspiration current, InspirationSettings s)
+        +IReadOnlyList~string~ AvailableBooks()
+        +IReadOnlyList~QuoteCategory~ AvailableCategories()
     }
     class IVerseSource {
         <<interface>>
@@ -649,10 +724,11 @@ classDiagram
     }
     class EmbeddedVerseSource
     class EmbeddedQuoteSource
-    class ImportedListSource
+    class ListVerseSource
+    class ListQuoteSource
     class ISelectionStrategy {
         <<interface>>
-        +T Select~T~(IReadOnlyList~T~ items, DateOnly date, Guid vaultId)
+        +int SelectIndex(int count, DateOnly date, Guid vaultId, string salt)
     }
     class DayOfYearStrategy
     class SeededRandomStrategy
@@ -660,10 +736,10 @@ classDiagram
         +bool ShowVerse
         +bool ShowQuote
         +string VerseSource
-        +ISet~string~ VerseBooks
+        +IReadOnlySet~string~ VerseBooks
         +string QuoteSource
-        +ISet~string~ Traditions
-        +ISet~string~ HiddenCategories
+        +IReadOnlySet~string~ Traditions
+        +IReadOnlySet~string~ HiddenCategories
         +SelectionMode Mode
     }
 
@@ -680,9 +756,9 @@ classDiagram
     DailyInspirationService --> ISelectionStrategy
     DailyInspirationService ..> InspirationSettings
     IVerseSource <|.. EmbeddedVerseSource
-    IVerseSource <|.. ImportedListSource
+    IVerseSource <|.. ListVerseSource
     IQuoteSource <|.. EmbeddedQuoteSource
-    IQuoteSource <|.. ImportedListSource
+    IQuoteSource <|.. ListQuoteSource
     ISelectionStrategy <|.. DayOfYearStrategy
     ISelectionStrategy <|.. SeededRandomStrategy
 ```
@@ -704,7 +780,7 @@ Matching is case- and accent-insensitive, terms are combined with AND, and a ter
 
 ### 8.1a Day mood (ISS-013)
 
-Each day up to today can be marked sad, neutral or happy with three faces next to the day's heading. The mood is part of the encrypted entry (`JournalEntry.Mood`) and is copied into the encrypted catalog (`CatalogEntry.Mood`), so the calendar can tint days (light red for sad, light green for happy, with a small face on every marked day) and the summary under the calendar can count the last 30 days and the last 12 months without opening every entry. Choosing a face saves at once. Moods aren't part of search.
+Each day up to today can be marked sad, neutral or happy with three faces next to the day's heading. The mood is part of the encrypted entry (`JournalEntry.Mood`) and is copied into the encrypted catalog (`CatalogEntry.Mood`), so the calendar can tint days (light red for sad, light green for happy, with a small face on every marked day) and the summary under the calendar can count the last 30 days and the last 12 months without opening every entry. Both periods end today and include today (`MoodSummary`). Days with no mood aren't counted. Choosing a face saves at once. Moods aren't part of search.
 
 ### 8.2 Daily verse and quote options
 
@@ -714,11 +790,11 @@ The quote card's label is the quote's category in capitals ("PHILOSOPHY", "LITER
 |---|---|---|
 | Show Bible verse | on / off | on |
 | Verse source | Built-in World English Bible (≥ 366 verses) · imported list | Built-in WEB |
-| Verse books filter | any subset of books (e.g. Psalms, Proverbs, Gospels) | all |
+| Verse books filter | any subset of books, listed in Bible order down columns | all |
 | Show a quote | on / off | on |
 | Quote source | Built-in quotes (394 philosophy, 395 literature) · imported list | Built-in |
 | Quote categories | one section per category in the content, Philosophy first (Philosophy, Literature; a future category such as Science appears with no code change), each with an *Include* tick box | all ticked |
-| Traditions filter | per category: Stoic, Greek, Chinese, … for philosophy; English, Persian, Chinese, Latin American, African, … for literature. Saved as "Category/Tradition"; a category with none ticked keeps all its quotes | all |
+| Traditions filter | per category: Stoic, Greek, Chinese, … for philosophy; English, Persian, Chinese, Latin American, African, … for literature. Saved as "Category/Tradition"; a category with none ticked keeps all its quotes. Listed alphabetically down columns | all |
 | Selection | Same each year by day-of-year · Random per day (stable for that date) | Day-of-year |
 | Per-day | **Shuffle** button for a new verse/quote today; it is saved with the entry | |
 
@@ -731,23 +807,29 @@ classDiagram
     direction TB
     class MainViewModel {
         +CalendarViewModel Calendar
-        +EntryViewModel? CurrentEntry
         +SearchViewModel Search
+        +MoodSummaryViewModel Moods
+        +EntryViewModel? CurrentEntry
         +string StatusText
+        +string LockText
         +IRelayCommand LockCommand
         +IRelayCommand OpenSettingsCommand
-        +Task SelectDateAsync(DateOnly d)
+        +IAsyncRelayCommand DeleteEntryCommand
+        +Task SelectDateAsync(DateOnly d, Guid? tabId)
+        +Task FlushAsync()
     }
     class CalendarViewModel {
         +int Year
         +int Month
         +string Title
+        +DateOnly SelectedDate
+        +DayOfWeek WeekStart
         +ObservableCollection~DayCellViewModel~ Days
         +IRelayCommand PreviousMonthCommand
         +IRelayCommand NextMonthCommand
         +IRelayCommand TodayCommand
         +event DateSelected
-        +void Refresh(ISet~DateOnly~ entryDates)
+        +void Refresh()
     }
     class DayCellViewModel {
         +DateOnly Date
@@ -756,8 +838,15 @@ classDiagram
         +bool IsToday
         +bool HasEntry
         +bool IsFuture
+        +bool IsPlanned
         +bool HasOpenItems
         +bool IsSelected
+        +Mood Mood
+    }
+    class MoodSummaryViewModel {
+        +MoodCounts Last30Days
+        +MoodCounts Last12Months
+        +void Update(MoodSummary s)
     }
     class EntryViewModel {
         +DateOnly Date
@@ -765,77 +854,146 @@ classDiagram
         +InspirationViewModel Inspiration
         +ObservableCollection~EntryTabViewModel~ Tabs
         +EntryTabViewModel SelectedTab
-        +ObservableCollection~Tag~ Tags
+        +ObservableCollection~TagChipViewModel~ Tags
+        +IReadOnlyList~MoodChoiceViewModel~ MoodChoices
+        +bool CanSetMood
         +bool IsDirty
-        +IAsyncRelayCommand AddTabCommand
+        +string SaveStatus
+        +IAsyncRelayCommand ChooseMoodCommand
+        +IRelayCommand AddTabCommand
         +IRelayCommand RemoveTabCommand
         +IRelayCommand AddTagCommand
-        +IAsyncRelayCommand SaveCommand
+        +Task SaveAsync()
+        +Task FlushAsync()
+    }
+    class MoodChoiceViewModel {
+        +Mood Mood
+        +string Label
+        +bool IsSelected
     }
     class EntryTabViewModel {
         +string Title
-        +Tag? Tag
-        +JournalDocument Document
+        +EntryTab Model
+        +IDocumentEditorHost? Host
         +IAsyncRelayCommand InsertImageCommand
         +IAsyncRelayCommand AttachFileCommand
-        +IAsyncRelayCommand OpenAttachmentCommand
+        +Task LoadImageAsync(BlobRef blob, int width)
     }
     class InspirationViewModel {
         +string VerseText
         +string VerseReference
         +string QuoteText
         +string QuoteAuthor
-        +IRelayCommand ShuffleCommand
+        +string QuoteLabel
+        +IRelayCommand CopyVerseCommand
+        +IRelayCommand CopyQuoteCommand
+        +IRelayCommand CopyBothCommand
     }
     class SearchViewModel {
         +string QueryText
         +ObservableCollection~SearchHitViewModel~ Results
-        +IReadOnlyList~string~ TagSuggestions
-        +IRelayCommand OpenResultCommand
+        +ObservableCollection~string~ TagSuggestions
+        +event ResultOpened
+    }
+    class UnlockViewModel {
+        +bool CanUseHello
+        +bool IsHelloPending
+        +bool ShowMainDisplayHint
+        +string VersionText
+        +IAsyncRelayCommand TryHelloCommand
+        +event Unlocked
+        +void CancelPendingHello()
     }
     class SettingsViewModel {
-        +InspirationSettings Inspiration
-        +int AutoLockMinutes
+        +ObservableCollection~CheckItem~ Books
+        +ObservableCollection~QuoteCategorySection~ CategorySections
+        +AutoLockOption AutoLock
         +string VaultFolder
+        +string VersionText
         +IAsyncRelayCommand RegenerateRecoveryCodeCommand
-        +IAsyncRelayCommand ReEnrollHelloCommand
+        +IAsyncRelayCommand EnrollHelloCommand
         +IAsyncRelayCommand ImportVersesCommand
         +IAsyncRelayCommand ImportQuotesCommand
+        +IAsyncRelayCommand SaveCommand
+    }
+    class ISettingsHost {
+        <<interface>>
+    }
+    class SettingsActions
+    class AppController {
+        +void Start()
+        +void OnApplicationExit()
+    }
+    class LockCoordinator {
+        +bool IsExiting
+        +TimeSpan WaitLimit
+        +event StatusChanged
+        +event LockProblem
+        +void BeginMonitoring(TimeSpan? timeout)
+        +void EndMonitoring()
+        +void Tick()
+        +Task LockAsync(LockReason reason)
+        +bool LockAndWait(LockReason reason)
+        +Task LockForExitAsync()
+        +void Shutdown()
+    }
+    class MainWindowCloser {
+        +bool IsExiting
+        +void Detach()
     }
     class JournalEditor {
         <<WPF control>>
-        +JournalDocument Document (DP)
-        +event DocumentChanged
-        +void InsertImage(ImageBlock b, BitmapSource s)
+        +RichTextBox TextBox
+        +JournalDocument Capture()
+        +void InsertImage(ImageBlock b)
         +void InsertAttachment(AttachmentBlock b)
-        +void ToggleList(ListKind kind)
-        +void ToggleChecked()
-        +void Indent(int delta)
     }
-    class FormattingToolbarViewModel {
-        +IReadOnlyList~string~ Fonts
-        +double FontSize
-        +ArgbColor TextColor
-        +ArgbColor HighlightColor
-        +bool IsBold
-        +bool IsItalic
-        +bool IsUnderline
-        +bool IsStrikethrough
-        +ListKind CurrentList
-        +void SyncFromSelection(TextSelection s)
+    class JournalDocumentEditor {
+        +void AttachClipboard(canPaste, pasted)
+        +JournalDocument? SelectionFragment()
+        +void InsertFragment(JournalDocument f)
+        +void InsertBlockAtCaret(Block b)
+        +void ToggleChecklist()
+        +bool ToggleChecked()
+        +bool Indent(int delta)
+        +void SetParagraphStyle(ParagraphStyle s)
+        +FormattingState ReadFormatting()
+    }
+    class JournalClipboard {
+        <<static>>
+        +string Format
+        +void AddTo(data, fragment)
+        +JournalDocument? Read(data)
+        +string PlainText(fragment)
     }
     class FlowDocumentMapper {
-        +FlowDocument ToFlowDocument(JournalDocument d, IImageLoader l)
+        +FlowDocument ToFlowDocument(JournalDocument d)
         +JournalDocument FromFlowDocument(FlowDocument f)
+        +JournalDocument FromRange(FlowDocument f, start, end)
+    }
+    class BlockEvents {
+        <<routed events>>
+        +ContentEditedEvent
+        +AttachmentActionEvent
+        +ImageActionEvent
+        +ImageLoadEvent
     }
     class ImageBlockView {
-        <<UserControl>>
-        +ImageBlock Block
+        <<Control>>
         +string Caption (two-way)
+        +ImageBlock ToBlock()
     }
     class AttachmentChip {
-        <<UserControl>>
-        +AttachmentBlock Block
+        <<Control>>
+        +string Description (two-way)
+        +AttachmentBlock ToBlock()
+    }
+    class ChecklistCheckBox {
+        <<Control>>
+    }
+    class MoodFace {
+        <<FrameworkElement>>
+        +Mood Mood
     }
     class MonthCalendarControl {
         <<UserControl>>
@@ -843,34 +1001,65 @@ classDiagram
 
     MainViewModel *-- CalendarViewModel
     MainViewModel *-- SearchViewModel
+    MainViewModel *-- MoodSummaryViewModel
     MainViewModel o-- EntryViewModel
     CalendarViewModel *-- "42" DayCellViewModel
     EntryViewModel *-- "1..*" EntryTabViewModel
     EntryViewModel *-- InspirationViewModel
+    EntryViewModel *-- "3" MoodChoiceViewModel
+    SettingsViewModel --> ISettingsHost
+    ISettingsHost <|.. SettingsActions
+    AppController --> LockCoordinator
+    AppController --> MainWindowCloser
+    AppController --> SettingsActions
+    AppController ..> UnlockViewModel
+    AppController ..> MainViewModel
+    SettingsActions --> LockCoordinator
+    MainWindowCloser ..> LockCoordinator : lock for exit, shut down
     MonthCalendarControl ..> CalendarViewModel : binds
-    JournalEditor ..> EntryTabViewModel : binds Document
+    JournalEditor ..> EntryTabViewModel : binds
     JournalEditor --> FlowDocumentMapper
-    JournalEditor ..> FormattingToolbarViewModel : selection state
+    JournalEditor --> JournalDocumentEditor : editing, clipboard
+    JournalDocumentEditor --> FlowDocumentMapper
+    JournalDocumentEditor ..> JournalClipboard
     FlowDocumentMapper ..> ImageBlockView : BlockUIContainer
     FlowDocumentMapper ..> AttachmentChip : BlockUIContainer
+    FlowDocumentMapper ..> ChecklistCheckBox : InlineUIContainer
+    ImageBlockView ..> BlockEvents : raises
+    AttachmentChip ..> BlockEvents : raises
+    JournalEditor ..> BlockEvents : handles its own
+    MonthCalendarControl ..> MoodFace : small face
 ```
 
-**How images sit between lines of text.** `FlowDocumentMapper` turns each `ImageBlock` into a `BlockUIContainer` that hosts an `ImageBlockView` (the picture with its caption box underneath) and tags the container with the block's id. Paragraphs map to `Paragraph`/`Run` with font family, size, colors, bold, italic, underline and strikethrough (`TextDecorations`). Headings map to styled paragraphs. Bulleted and numbered paragraphs map to nested WPF `List` elements (`MarkerStyle` Disc or Decimal). Checklist items map to a `Paragraph` whose first inline is an `InlineUIContainer` holding a `CheckBox`, so the tick sits on the same line as the text and moves with it. Inserting an image at the caret splits the current paragraph and places the image block between the two halves. Mapping back walks the `FlowDocument` and rebuilds the block list, so the stored format never contains XAML. Images are decoded at display size (`DecodePixelWidth`) to keep memory low; the original bytes stay encrypted in the blob store.
+**How images sit between lines of text.** `FlowDocumentMapper` turns each `ImageBlock` into a `BlockUIContainer` that hosts an `ImageBlockView` (the picture with its caption box underneath) and tags the container with the block's id. Paragraphs map to `Paragraph`/`Run` with font family, size, colors, bold, italic, underline and strikethrough (`TextDecorations`). Headings map to styled paragraphs. Bulleted and numbered paragraphs map to nested WPF `List` elements (`MarkerStyle` Disc or Decimal). Checklist items map to a `Paragraph` whose first inline is an `InlineUIContainer` holding a `ChecklistCheckBox`, so the tick sits on the same line as the text and moves with it. A ticked item's strikethrough is on the paragraph for display only, not stored in its runs; the checkbox paints the editor's background under itself and the gap before the text, so the line shows only through the text (ISS-014). Inserting an image at the caret splits the current paragraph and places the image block between the two halves. Mapping back walks the `FlowDocument` and rebuilds the block list, so the stored format never contains XAML. Images are decoded at display size (`DecodePixelWidth`) to keep memory low; the original bytes stay encrypted in the blob store.
 
-**Calendar highlighting.** `CalendarViewModel.Refresh` receives the set of dates that have entries (from the catalog) and sets `HasEntry` on each of the 42 cells. The control styles `HasEntry` with a filled accent background, `IsToday` with a ring, `IsSelected` with a bold outline, and days outside the month in a muted color. A future day with an entry (`IsFuture && HasEntry`) gets a dashed outline so planned days stand out, and a small dot marks days with open checklist items. Saving an entry raises `EntrySaved`, which refreshes the current month.
+**Blocks and their editor.** WPF re-creates embedded controls from XAML on undo, so they can't be wired up one by one. Blocks raise routed events (`BlockEvents`) that bubble to the editor holding them, including an image asking for its bitmap (`ImageLoadEvent`), which the editor answers from its open tab. Each editor therefore hears only its own blocks, and a closed day gives no answer, so nothing can load after a lock (ISS-019).
+
+**Copy and paste.** WPF's copy leaves out embedded controls and the journal's heading marker. So `JournalDocumentEditor` also puts the selection on the clipboard in the journal's own format (`JournalClipboard.Format`, the document model as JSON) and reads it back on paste and drop, as one undo step. Pasted images and files refer to the same vault file, so cutting and pasting never loses them. Other apps get the standard formats, with checklist lines as ☐ and ☑ (ISS-010).
+
+**Calendar highlighting.** `CalendarViewModel.Refresh` gets the dates that have entries, the dates with open items and the moods from the catalog, and sets them on each of the 42 cells. The control styles `HasEntry` with a filled accent background, `IsToday` with a ring, `IsSelected` with a bold outline, and days outside the month in a muted color. A future day with an entry (`IsFuture && HasEntry`) gets a dashed outline so planned days stand out, and a small dot marks days with open checklist items. A day with a mood is tinted instead of highlighted (light red for sad, light green for happy, normal background for neutral) and shows a small face, so the mood doesn't depend on colour. Saving or deleting an entry raises `JournalService.EntryChanged`, which refreshes the month and the mood counts.
+
+**Locking and exiting.** `LockCoordinator` is the one place that decides when to lock:
+
+- **Auto-lock:** it watches input in the app and runs `AutoLockPolicy` on a timer.
+- **Windows lock and sleep:** it listens to `SystemEvents`. On sleep and on Windows shutdown it uses `LockAndWait`, which returns once the save and lock have finished or after 5 seconds. .NET delivers these notifications on the UI thread, and the save continues on that thread, so `LockAndWait` keeps it processing work while waiting rather than blocking it (ISS-024).
+- **The close button:** `MainWindowCloser` cancels the window's first close, leaves the closing event, saves and locks, then closes the window and shuts down, even if saving failed. WPF refuses to close a window from inside its own closing event (ISS-016).
+
+When the lock finishes, `AppController` clears everything that holds journal content and returns to the unlock window, unless the app is exiting.
 
 ## 10. Cross-cutting concerns
 
 | Concern | Approach |
 |---|---|
-| **Composition** | `App.xaml.cs` builds a `ServiceProvider`. Vault-dependent services are created after unlock; locking disposes them and returns to the unlock window. |
+| **Composition** | `AppController` wires the app by hand and runs the window flow (setup → unlock → main window → unlock). `LockCoordinator` decides when to lock or exit: auto-lock, Windows lock and sleep, the Lock button, closing. `SettingsActions` carries out what the Settings window asks for. Vault-dependent services are created after unlock; locking disposes them and returns to the unlock window. |
 | **Single instance** | Named mutex; a second launch activates the existing window. |
-| **Auto-lock** | `IdleMonitor` watches input in the app; `SystemEvents.SessionSwitch` and power events lock immediately. Unsaved changes are saved before locking. |
+| **Auto-lock** | `LockCoordinator` watches input in the app; `SystemEvents.SessionSwitch` and power events lock immediately. Unsaved changes are saved before locking (§9). |
 | **Error handling** | A file that fails to decrypt is reported for that day only ("This entry could not be read; it may be damaged") and never overwritten. Global handler logs and shows a friendly message. |
-| **Logging** | `Microsoft.Extensions.Logging` to a rolling file in `%LOCALAPPDATA%\Journal\logs`. Never logs entry content, tags, captions or key material. |
+| **Logging** | `Microsoft.Extensions.Logging` abstractions with the app's own `FileLoggerProvider`, writing a daily file in `%LOCALAPPDATA%\Journal\logs`. Never logs entry content, tags, captions or key material. |
 | **Settings** | `%APPDATA%\Journal\settings.json` (vault location, auto-lock, inspiration options). Contains no journal content. |
 | **Backup** | *Export backup* copies the encrypted vault folder to a zip. Restoring needs the recovery code (or the same PC's Windows Hello). |
 | **Accessibility** | Keyboard navigation for calendar (arrow keys, PgUp/PgDn months), editor shortcuts (Ctrl+B/I/U, Ctrl+Shift+X strikethrough, Ctrl+Shift+L checklist, Ctrl+Enter tick item, Ctrl+F focuses search), AutomationProperties on custom controls. |
+| **Version** | One place: `<Version>` in `Directory.Build.props`. `AppInfo` reads it from the running program for Settings and the unlock window. A `v*` tag builds the Windows zip and publishes a GitHub Release (`.github/workflows/release.yml`). |
 | **Theming** | Light theme in v1 with all colors in a resource dictionary so a dark theme can be added later. |
 
 ## 11. Design patterns used
@@ -881,19 +1070,19 @@ classDiagram
 | Facade | `JournalService` hides repositories, blob store, catalog and index from view models |
 | Repository | `IEntryRepository`, `IBlobStore`, `ICatalogStore` |
 | Strategy | `IKeyProtector` (unlock methods), `ISelectionStrategy` (verse/quote choice) |
-| Composite + Visitor | `JournalDocument` / `DocBlock` hierarchy; `IDocBlockVisitor` for text extraction, mapping and blob collection |
+| Composite + Visitor | `JournalDocument` / `DocBlock` hierarchy; `IDocBlockVisitor` for mapping to the editor; blocks answer `IsEmpty` and `ReferencedBlobs` themselves |
 | Adapter | `FlowDocumentMapper` (domain ⇄ WPF), `WinRtHelloCredentialApi` (WinRT ⇄ testable interface) |
-| Observer | `EntrySaved`, `VaultSession.Locked/Unlocked` events |
+| Observer | `JournalService.EntryChanged`, `VaultSession.Locked/Unlocked`, `LockCoordinator.StatusChanged`, routed `BlockEvents` |
 | Value Object | `Tag`, `BlobRef`, `Verse`, `Quote`, `RecoveryCode`, `DailyInspiration` |
 
-## 12. Test strategy (detail comes with the test-case document)
+## 12. Test strategy (detail is in [TestCases.md](TestCases.md))
 
 | Level | Project | Examples |
 |---|---|---|
 | Unit | `Journal.Core.Tests` | Entry/tab/tag invariants, document text extraction, query parser, search ranking and snippets, verse/quote selection determinism, auto-lock timing with a fake clock |
 | Integration | `Journal.Infrastructure.Tests` | Encrypt/decrypt round trip, tamper and swap detection, wrong-key failure, recovery-code wrap/unwrap, file vault save/load/delete in a temp folder, catalog rebuild, chunked large blobs, atomic writes |
-| UI logic | `Journal.App.Tests` (STA) | FlowDocument ⇄ model round trips (fonts, colors, strikethrough, nested bulleted/numbered lists, checklists with ticked state, image between paragraphs, captions, attachments), calendar grid for any month, view models against fakes |
-| Manual | Checklist | Real Windows Hello enrol/unlock/cancel, recovery on a second PC, auto-lock on Win+L |
+| UI logic | `Journal.App.Tests` (STA) | FlowDocument ⇄ model round trips (fonts, colors, strikethrough, nested bulleted/numbered lists, checklists with ticked state, image between paragraphs, captions, attachments), calendar grid for any month, view models against fakes, copy and paste, locking and exit, sleep with a real vault under a watchdog, real windows shown off screen for layout |
+| Manual | Checklist | Real Windows Hello enrol/unlock/cancel and where its dialog appears, recovery on a second PC, Win+L, a PC really going to sleep |
 
 Target: ≥ 85% line coverage on `Journal.Core`.
 
@@ -902,9 +1091,9 @@ Target: ≥ 85% line coverage on `Journal.Core`.
 | Package | Use | License |
 |---|---|---|
 | CommunityToolkit.Mvvm | MVVM source generators, commands | MIT |
-| Microsoft.Extensions.DependencyInjection / Logging | Composition, logging | MIT |
-| xUnit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk | Tests | Apache-2.0 / MIT |
-| NSubstitute | Test doubles | BSD-3 |
+| Microsoft.Extensions.Logging.Abstractions | Logging interfaces | MIT |
+| System.Security.Cryptography.ProtectedData | DPAPI for the fallback unlock | MIT |
+| xUnit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk | Tests (fakes are hand-written) | Apache-2.0 / MIT |
 | coverlet.collector | Coverage | MIT |
 
 Crypto uses only built-in .NET (`AesGcm`, `HKDF`, `Rfc2898DeriveBytes.Pbkdf2`, `HMACSHA256`, `RandomNumberGenerator`). Windows Hello uses the built-in WinRT projection via the `net10.0-windows10.0.19041.0` target framework.
@@ -914,9 +1103,11 @@ Crypto uses only built-in .NET (`AesGcm`, `HKDF`, `Rfc2898DeriveBytes.Pbkdf2`, `
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Losing both the PC's Windows Hello key and the recovery code | Journal is unrecoverable (by design, nobody else can open it either) | Setup requires you to confirm part of the recovery code before continuing; Settings can show reminders and regenerate the code while unlocked. |
-| Windows Hello prompt opening behind the WPF window | Confusing unlock | Bring the app to the foreground before the call and pass the window handle via the WinRT interop where supported. |
+| Windows Hello prompt opening behind the WPF window | Confusing unlock | Allow the dialog to the foreground before the call, and say how to find it while it waits (§6.5, ISS-023). Windows gives no way to place the key-signing dialog. |
+| Switching days is slower than NFR-PERF-02 asks | About 1.1 s against 300 ms for text, 1.3 s against 1 s with images (TC-NFR-14) | Logged as ISS-026: part of it is an unneeded save on every switch. |
+| A slow save when the PC sleeps | The wait stops at 5 seconds, so the PC may sleep before the journal has locked | Normally about 0.1 second; past the limit it is logged, and the lock finishes on waking (ISS-024). |
 | Very large attachments | Memory and save time | Streamed, chunked encryption; 250 MB limit per file. |
-| `RichTextBox` quirks with embedded controls (undo, copy/paste of image blocks) | Lost captions or images on paste | Custom clipboard handling for image blocks; covered by mapper tests and manual checks. |
+| `RichTextBox` quirks with embedded controls (undo, copy/paste of image blocks) | Lost captions or images on paste | The journal's own clipboard format (§9, ISS-010); covered by automated copy-and-paste tests. |
 
 ## 15. Decisions from review (v0.2)
 

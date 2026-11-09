@@ -1,12 +1,10 @@
 using System.IO;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Journal.App.Controls;
 using Journal.App.ViewModels;
 using Journal.App.Views;
-using Journal.Core.Inspiration;
 using Journal.Core.Security;
 using Journal.Core.Services;
 using Journal.Core.Settings;
@@ -14,15 +12,15 @@ using Journal.Infrastructure;
 using Journal.Infrastructure.Hello;
 using Journal.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
 
 namespace Journal.App.Services;
 
 /// <summary>
-/// Runs the app's lifecycle: setup or unlock, the unlocked journal, auto-lock and locking (Design §10).
-/// Vault-dependent services exist only between unlock and lock.
+/// Runs the app's window flow: setup or unlock, then the journal, then back to unlock (Design §10).
+/// Vault-dependent services exist only between unlock and lock. Deciding when to lock or exit is
+/// <see cref="LockCoordinator"/>'s job; the Settings window's actions are <see cref="SettingsActions"/>'.
 /// </summary>
-public sealed class AppController : ISettingsHost
+public sealed class AppController : IOpenJournal
 {
     private readonly ISettingsStore _settingsStore;
     private readonly IClock _clock = new SystemClock();
@@ -30,8 +28,8 @@ public sealed class AppController : ISettingsHost
     private readonly TempFileManager _temp = new(AppPaths.TempRoot);
     private readonly DialogService _dialogs = new();
     private readonly ILogger _log;
-    private readonly AutoLockPolicy _autoLock;
-    private readonly DispatcherTimer _idleTimer;
+    private readonly LockCoordinator _locks;
+    private readonly SettingsActions _settingsActions;
 
     private AppSettings _settings;
     private VaultSession? _session;
@@ -40,20 +38,25 @@ public sealed class AppController : ISettingsHost
     private MainWindow? _main;
     private MainWindowCloser? _closer;
     private MainViewModel? _mainVm;
-    private bool _locking;
     private Action? _cancelPendingHello;
-    private bool _exiting;
-    private bool _shutdownRequested;
 
     public AppController(ISettingsStore settingsStore, ILogger log)
     {
         _settingsStore = settingsStore;
         _log = log;
         _settings = settingsStore.Load();
-        _autoLock = new AutoLockPolicy(_clock);
-        _autoLock.LockRequested += async (_, _) => await LockAsync(LockReason.Idle);
-        _idleTimer = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => OnIdleTick(), Dispatcher.CurrentDispatcher);
+        _locks = new LockCoordinator(_clock, () => _session, EndApp, Dispatcher.CurrentDispatcher);
+        _locks.StatusChanged += (_, text) => { if (_mainVm is not null) _mainVm.LockText = text; };
+        _locks.LockProblem += (_, problem) => _log.LogWarning("{Problem}", problem);
+        _settingsActions = new SettingsActions(this, settingsStore, _locks, _dialogs,
+            () => { foreach (var w in Application.Current.Windows.OfType<SettingsWindow>().ToList()) w.Close(); });
     }
+
+    AppSettings IOpenJournal.Settings { get => _settings; set => _settings = value; }
+    string IOpenJournal.VaultFolder => VaultFolderSetting;
+    VaultSession? IOpenJournal.Session => _session;
+    VaultServices? IOpenJournal.Services => _services;
+    MainViewModel? IOpenJournal.Main => _mainVm;
 
     private string VaultFolderSetting => _settings.VaultFolder ?? AppPaths.DefaultVaultFolder;
 
@@ -61,8 +64,7 @@ public sealed class AppController : ISettingsHost
     {
         int leftovers = _temp.CleanAll();
         if (leftovers > 0) _log.LogWarning("Some temporary files could not be removed at startup ({Count}).", leftovers);
-        SystemEvents.SessionSwitch += OnSessionSwitch;
-        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        _locks.HookSystemEvents();
         if (File.Exists(Path.Combine(VaultFolderSetting, "vault.json"))) ShowUnlock(VaultFolderSetting);
         else ShowSetup();
     }
@@ -99,7 +101,7 @@ public sealed class AppController : ISettingsHost
             window.Close();
             ShowUnlock(folder);
         };
-        window.Closed += (_, _) => { if (!done) Exit(); };
+        window.Closed += (_, _) => { if (!done) _locks.Shutdown(); };
         window.Show();
     }
 
@@ -126,7 +128,7 @@ public sealed class AppController : ISettingsHost
             window.Close();
             ShowUnlock(next);
         };
-        window.Closed += (_, _) => { if (!done) Exit(); };
+        window.Closed += (_, _) => { if (!done) _locks.Shutdown(); };
         Application.Current.MainWindow = window;
         window.Show();
         window.Activate();
@@ -177,7 +179,6 @@ public sealed class AppController : ISettingsHost
         var services = _services;
         _images = new ImageCache(b => services.Journal.ReadBlobAsync(b));
         var images = _images;
-        ImageBlockView.Loader = (blob, width) => images.LoadAsync(blob, width);
 
         var ctx = new JournalContext
         {
@@ -193,24 +194,20 @@ public sealed class AppController : ISettingsHost
             SaveSettings = s => _settingsStore.Save(s),
         };
         _mainVm = new MainViewModel(ctx);
-        _mainVm.LockRequested += async (_, _) => await LockAsync(LockReason.User);
+        _mainVm.LockRequested += async (_, _) => await _locks.LockAsync(LockReason.User);
         _mainVm.SettingsRequested += (_, _) => ShowSettings();
         session.RegisterBeforeLock(BeforeLockAsync);
         session.Locked += OnLocked;
 
         _main = new MainWindow(_mainVm);
         // One click on close saves, locks and exits (FR-SEC-21, ISS-016).
-        _closer = new MainWindowCloser(_main, LockForExitAsync, Exit, OnExitError);
+        _closer = new MainWindowCloser(_main, _locks.LockForExitAsync, _locks.Shutdown, OnExitError);
         Application.Current.MainWindow = _main;
         _main.Show();
         _main.Activate();
         await _mainVm.InitializeAsync();
 
-        _autoLock.Timeout = _settings.AutoLockTimeout;
-        _autoLock.OnActivity();
-        InputManager.Current.PreProcessInput += OnInput;
-        _idleTimer.Start();
-        OnIdleTick();
+        _locks.BeginMonitoring(_settings.AutoLockTimeout);
 
         if (offerHello && await new WinRtHelloCredentialApi().IsSupportedAsync() &&
             _dialogs.Confirm("Set up Windows Hello",
@@ -233,20 +230,6 @@ public sealed class AppController : ISettingsHost
         }
     }
 
-    public async Task LockAsync(LockReason reason)
-    {
-        if (_locking || _session is not { IsUnlocked: true }) return;
-        _locking = true;
-        try
-        {
-            await _session.LockAsync(reason);
-        }
-        finally
-        {
-            _locking = false;
-        }
-    }
-
     /// <summary>Clears everything that holds journal content (FR-SEC-17).</summary>
     private void OnLocked(object? sender, LockReason reason)
     {
@@ -256,9 +239,7 @@ public sealed class AppController : ISettingsHost
             s.Locked -= OnLocked;
             s.UnregisterBeforeLock(BeforeLockAsync);
         }
-        _idleTimer.Stop();
-        InputManager.Current.PreProcessInput -= OnInput;
-        ImageBlockView.Loader = null;
+        _locks.EndMonitoring();
         _images?.Clear();
         _images = null;
         if (_main is not null)
@@ -278,13 +259,7 @@ public sealed class AppController : ISettingsHost
         _services?.Dispose();
         _services = null;
         _temp.CleanAll();
-        if (!_exiting) ShowUnlock(VaultFolderSetting);
-    }
-
-    private async Task LockForExitAsync()
-    {
-        _exiting = true;
-        await LockAsync(LockReason.Exit);
+        if (!_locks.IsExiting) ShowUnlock(VaultFolderSetting);
     }
 
     private void OnExitError(Exception e)
@@ -293,15 +268,10 @@ public sealed class AppController : ISettingsHost
         _dialogs.Error("Closing Journal", "Journal couldn't finish saving before closing. " + e.Message);
     }
 
-    /// <summary>Ends the app. Safe to call more than once.</summary>
-    private void Exit()
+    /// <summary>The last step of exiting, called once by <see cref="LockCoordinator"/>.</summary>
+    private void EndApp()
     {
-        _exiting = true;
-        if (_shutdownRequested) return;
-        _shutdownRequested = true;
         _cancelPendingHello?.Invoke();
-        SystemEvents.SessionSwitch -= OnSessionSwitch;
-        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         _temp.CleanAll();
         Application.Current.Shutdown();
     }
@@ -309,42 +279,10 @@ public sealed class AppController : ISettingsHost
     /// <summary>Called from the app's exit path (e.g. Windows shutting down).</summary>
     public void OnApplicationExit()
     {
-        _exiting = true;
+        _locks.PrepareExit();
         _cancelPendingHello?.Invoke();
-        if (_session is { IsUnlocked: true })
-        {
-            try { LockAsync(LockReason.Exit).GetAwaiter().GetResult(); }
-            catch (Exception e) { _log.LogError(e, "Saving on exit failed."); }
-        }
+        if (_session is { IsUnlocked: true }) _locks.LockAndWait(LockReason.Exit);
         _temp.CleanAll();
-    }
-
-    private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
-    {
-        if (e.Reason is SessionSwitchReason.SessionLock or SessionSwitchReason.ConsoleDisconnect or SessionSwitchReason.RemoteDisconnect)
-            Application.Current.Dispatcher.InvokeAsync(() => LockAsync(LockReason.SessionLock));
-    }
-
-    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
-    {
-        if (e.Mode == PowerModes.Suspend)
-            Application.Current.Dispatcher.Invoke(() => LockAsync(LockReason.Suspend).GetAwaiter().GetResult());
-    }
-
-    private void OnInput(object sender, PreProcessInputEventArgs e)
-    {
-        if (e.StagingItem.Input is KeyboardEventArgs or MouseButtonEventArgs or MouseWheelEventArgs ||
-            e.StagingItem.Input is MouseEventArgs && e.StagingItem.Input.RoutedEvent == Mouse.MouseMoveEvent)
-            _autoLock.OnActivity();
-    }
-
-    private void OnIdleTick()
-    {
-        _autoLock.Tick();
-        if (_mainVm is null) return;
-        _mainVm.LockText = _autoLock.Remaining is { } r
-            ? $"Locks after {Math.Max(1, (int)Math.Ceiling(r.TotalMinutes))} min without activity"
-            : "Auto-lock is off";
     }
 
     // ------------------------------------------------------------------ settings
@@ -354,56 +292,7 @@ public sealed class AppController : ISettingsHost
         if (_main is null || _session is null) return;
         var settingsCopy = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(
             System.Text.Json.JsonSerializer.Serialize(_settings)) ?? new AppSettings();
-        var window = new SettingsWindow(new SettingsViewModel(this, _dialogs, settingsCopy)) { Owner = _main };
+        var window = new SettingsWindow(new SettingsViewModel(_settingsActions, _dialogs, settingsCopy)) { Owner = _main };
         window.ShowDialog();
-    }
-
-    public VaultSession Session => _session ?? throw new InvalidOperationException("The journal is locked.");
-    public string VaultFolder => VaultFolderSetting;
-    public IReadOnlyList<string> AvailableBooks => _services?.Journal.Inspiration.AvailableBooks() ?? [];
-    public IReadOnlyList<QuoteCategory> QuoteCategories => _services?.Journal.Inspiration.AvailableCategories() ?? [];
-    public int ImportedVerseCount => _services?.ImportedVerses.Count ?? 0;
-    public int ImportedQuoteCount => _services?.ImportedQuotes.Count ?? 0;
-
-    public async Task<string> ImportVersesAsync(string path)
-    {
-        var result = ListImporter.ImportVerses(await File.ReadAllTextAsync(path), path);
-        await _services!.ImportVersesAsync(result.Items);
-        return result.Summary;
-    }
-
-    public async Task<string> ImportQuotesAsync(string path)
-    {
-        var result = ListImporter.ImportQuotes(await File.ReadAllTextAsync(path), path);
-        await _services!.ImportQuotesAsync(result.Items);
-        return result.Summary;
-    }
-
-    public async Task MoveVaultAsync(string newFolder)
-    {
-        if (_mainVm is not null) await _mainVm.FlushAsync();
-        var old = VaultFolderSetting;
-        await Task.Run(() => VaultMover.Move(old, newFolder));
-        _settings.VaultFolder = newFolder;
-        _settingsStore.Save(_settings);
-        _dialogs.Info("Journal moved", "Your journal was moved. Unlock it again to continue.");
-        foreach (var w in Application.Current.Windows.OfType<SettingsWindow>().ToList()) w.Close();
-        await LockAsync(LockReason.User);
-    }
-
-    public void ExportBackup(string zipPath) => BackupService.Export(VaultFolderSetting, zipPath);
-
-    public async Task ApplySettingsAsync(AppSettings settings)
-    {
-        _settings = settings;
-        _settingsStore.Save(settings);
-        _autoLock.Timeout = settings.AutoLockTimeout;
-        _autoLock.OnActivity();
-        OnIdleTick();
-        if (_mainVm is not null)
-        {
-            _mainVm.Calendar.WeekStart = settings.WeekStart;
-            if (_mainVm.CurrentEntry is { } entry) await entry.RefreshInspirationAsync();
-        }
     }
 }

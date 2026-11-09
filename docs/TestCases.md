@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 (implemented; automated cases pass) |
-| **Date** | 2026-10-15 |
+| **Version** | 1.2 (implemented; automated cases pass; updated through ISS-024) |
+| **Date** | 2026-11-04 |
 | **Based on** | Requirements v0.1, Architecture & Design v0.2 |
 
 ## 1. Approach
@@ -12,10 +12,10 @@
 |---|---|---|---|
 | Unit | **U** | `Journal.Core.Tests` (xUnit). Fakes for `IClock`, `IKeyProtector`, repositories. | Every build |
 | Integration | **I** | `Journal.Infrastructure.Tests` (xUnit). Real AES-GCM, PBKDF2, HKDF and file vault in a temp folder; fake Hello API. | Every build |
-| UI logic | **A** | `Journal.App.Tests` (xUnit on an STA thread). `FlowDocumentMapper`, view models, calendar, editor commands without showing windows. | Every build |
+| UI logic | **A** | `Journal.App.Tests` (xUnit on an STA thread). `FlowDocumentMapper`, view models, calendar, editor commands, locking and exit; layout tests show the real windows off screen. | Every build |
 | Manual | **M** | Checklist run on a real PC with Windows Hello (fingerprint or PIN), before each release. | Release |
 
-**Test data:** `TestVaultBuilder` creates vaults with N generated entries (generated sample sentences, tags from a fixed list, images from small embedded PNGs, checklists) for repeatable integration and performance tests. All tests use a fixed `FakeClock` set to **2026-10-15 10:00 local** unless stated.
+**Test data:** `TestData` and the fakes in `Journal.Core.Tests/Support` create entries and in-memory stores; `TempVault` creates a real vault in a temp folder; the performance tests generate 3,650 entries with a fixed random seed. All tests use a fixed `FakeClock` set to **2026-10-15 10:00 local** unless stated.
 
 **Pass criteria for release:** all U, I and A tests pass; all *Must* manual cases pass; no open defect of severity High or above; `Journal.Core` line coverage ≥ 85 %.
 
@@ -25,22 +25,22 @@
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
-| TC-SEC-01 | FR-SEC-01 | A | Start `ShellViewModel` with an empty settings store and no vault. | Setup wizard is shown, not the unlock window. |
+| TC-SEC-01 | FR-SEC-01 | M | Start the app with no settings file and no vault. | Setup wizard is shown, not the unlock window. |
 | TC-SEC-02 | FR-SEC-02 | A | Open wizard's location page with a fake environment where OneDrive path exists; then where it does not. | Default `%LOCALAPPDATA%\Journal\Vault` preselected; OneDrive option visible only in the first case; *Browse…* always present. |
-| TC-SEC-03 | FR-SEC-03 | I | `VaultInitializer.CreateVaultAsync` with fake Hello API returning deterministic signatures. | Vault created with a `windows-hello` key slot; fake API received two sign calls with the same challenge. |
+| TC-SEC-03 | FR-SEC-03 | I | `VaultSession.CreateVaultAsync` with fake Hello API returning deterministic signatures. | Vault created with a `windows-hello` key slot; fake API received two sign calls with the same challenge. |
 | TC-SEC-04 | FR-SEC-04 | I | Same as TC-SEC-03 but fake API returns different signatures per call. | No `windows-hello` slot; a `hello-dpapi` slot is created; result flags `WeakerProtection = true`. |
 | TC-SEC-05 | FR-SEC-05 | A | Wizard with fake Hello API `IsSupported = false`. | Explanation text with link to Windows Settings shown; *Continue with recovery code only* enabled; resulting vault has only a recovery slot. |
 | TC-SEC-06 | FR-SEC-06 | U | Generate 1,000 recovery codes. | Each matches `^[0-9A-HJKMNP-TV-Z]{5}(-[0-9A-HJKMNP-TV-Z]{5}){4}$`; no duplicates; `TryParse(Formatted)` round-trips. |
 | TC-SEC-07 | FR-SEC-07 | A | On the confirm page type a wrong last group, then the correct one (lowercase, with spaces). | *Finish* disabled for wrong input; enabled for correct input regardless of case and spaces. |
 | TC-SEC-08 | FR-SEC-08 | I | Create vault, write 3 entries, dispose session, unlock with `WindowsHelloKeyProtector` using the same fake signature. | Unlock succeeds without any password; all 3 entries readable. |
-| TC-SEC-09 | FR-SEC-09 | A | Unlock VM with Hello protector throwing `UserCancelled`, then `NotAvailable`. | Both cases show *Try Windows Hello again* and *Use recovery code*; no crash; vault stays locked. |
+| TC-SEC-09 | FR-SEC-09 | A | Unlock view model with the Hello protector failing with `UnlockFailure.Cancelled`, then `NotAvailable`. | Both cases show *Try Windows Hello again* and *Use recovery code*; no crash; vault stays locked. |
 | TC-SEC-10 | FR-SEC-10 | I | Unlock with recovery code typed as lowercase, without dashes, with `O` for `0` and `l` for `1`. | Unlock succeeds in every variant. |
 | TC-SEC-11 | FR-SEC-11 | A | Enter wrong recovery code 6 times with `FakeClock`. | Generic "That recovery code didn't work" message; 6th attempt rejected until clock advances 30 s; no slot or position info in message. |
 | TC-SEC-12 | FR-SEC-12 | A | Unlock by recovery code with vault whose only Hello slot names machine `OTHER-PC`. | Offer to set up Windows Hello on this PC appears; accepting adds a slot for this machine name. |
-| TC-SEC-13 | FR-SEC-13 | U | `AutoLockPolicy` timeout 10 min; activity at 10:00; tick at 10:09:59, then 10:10:00. Repeat with *Never*. | No lock at 10:09:59; lock at 10:10:00. With *Never*, no lock after 24 h. Activity at 10:05 resets the timer. |
-| TC-SEC-14 | FR-SEC-14 | A | Raise fake `SessionSwitch(SessionLock)` and `PowerModeChanged(Suspend)` events. | Session locks on each event. |
+| TC-SEC-13 | FR-SEC-13 | U | `AutoLockPolicy` timeout 10 min; activity at 10:00; tick at 10:09:59, then 10:10:00. Repeat with *Never*. Also through `LockCoordinator`, with the status text. | No lock at 10:09:59; lock at 10:10:00. With *Never*, no lock after 24 h. Activity at 10:05 resets the timer. The status bar text counts down, or says auto-lock is off (ISS-018). |
+| TC-SEC-14 | FR-SEC-14 | A | Raise fake `SessionSwitch(SessionLock)` and `PowerModeChanged(Suspend)` events. Through `LockCoordinator`, also with session changes that shouldn't lock (unlock, connect) and waking. | Session locks on each event. Those don't lock (ISS-018). A real save during sleep: TC-SEC-28. |
 | TC-SEC-14M | FR-SEC-14 | M | Unlock the journal, press Win+L, sign back in to Windows. | Journal shows the unlock window; Hello prompt required. |
-| TC-SEC-15 | FR-SEC-15 | A | Execute `LockCommand`; also send Ctrl+L key gesture to the main view's input bindings. | Session locked in both cases. |
+| TC-SEC-15 | FR-SEC-15 | A | Execute `LockCommand`; also send Ctrl+L key gesture to the main view's input bindings. Two lock requests at once. | Session locked in both cases. It locks once (ISS-018). |
 | TC-SEC-16 | FR-SEC-16, FR-ENT-05 | A | Type in the editor, lock within 1 s (before the autosave delay). | Repository received `SaveAsync` with the new text before `Locked` was raised. |
 | TC-SEC-17 | FR-SEC-17 | I | Unlock, open an attachment (temp file created), lock. | Temp folder empty; `SecretKey` buffers are all zero; main VM's `CurrentEntry` is null; unlock window requested. |
 | TC-SEC-18 | FR-SEC-18 | I | Regenerate recovery code; try old code; try new code. Re-enroll Hello. Remove other machine's Hello slot. | Old code fails, new code works; Hello slot replaced; removed slot no longer in `vault.json`; journal content unchanged. |
@@ -48,7 +48,9 @@
 | TC-SEC-23 | FR-SEC-08 | A | Show the real unlock window for a vault with a Windows Hello slot and wait; then click Unlock with Windows Hello. | No Windows Hello request until the button; then exactly one, and the journal unlocks. |
 | TC-SEC-24 | NFR-USE-03 | M | On a PC with several displays: put the journal on a side display, lock it, click Unlock with Windows Hello; repeat with the unlock window on the main display. | Side display: the hint "Windows Hello opens on your main display" shows and the dialog opens on the main display. Main display: no hint. |
 | TC-SEC-25 | NFR-USE-03 | A/I | Unlock and setup view models on and off the main display, with and without Windows Hello; the real unlock window moved between the main and a side display; the fallback unlock with a window handle. | Hint only when Windows Hello is offered and the window is on a side display; the real window shows and hides it as it moves; the fallback passes the window to Windows Hello. |
-| TC-SEC-26 | FR-SEC-21 | A/M | Automated, on a real window with the app's close handling: close when locking finishes at once (nothing to save, the case that failed); close while a save takes time, clicking close again meanwhile; close when saving fails; close after the handling is detached (a normal lock). Manual: close Journal with the X after editing and without editing, then start it again. | Each close needs one click; save-and-lock runs once; the window closes and shutdown is requested exactly once; a failing save is reported and the app still shuts down; after detaching, the window just closes. Manually, Journal leaves Task Manager within a few seconds and starts again normally. |
+| TC-SEC-26 | FR-SEC-21 | A/M | Automated, on a real window with the app's close handling: close when locking finishes at once (nothing to save, the case that failed); close while a save takes time, clicking close again meanwhile; close when saving fails; close after the handling is detached (a normal lock). Manual: close Journal with the X after editing and without editing, then start it again. Exit while a lock is under way; exit when already locked. | Each close needs one click; save-and-lock runs once; the window closes and shutdown is requested exactly once; a failing save is reported and the app still shuts down; after detaching, the window just closes. Manually, Journal leaves Task Manager within a few seconds and starts again normally. Exit waits for the running lock, so its save isn't cut off; shutdown is requested once (ISS-018). |
+| TC-SEC-27 | FR-SEC-22 | A/M | Automated: show the real unlock window with a fake Windows Hello that waits, then cancel it. Manual, on this PC: unlock 10 times with the unlock window on the main display, using the button and Enter, and after auto-lock, after locking Windows, and with another app in front; then a few times on a side display. | Automated: the message is hidden, shows while waiting and mentions Alt+Tab, then goes away. Manual: the dialog can be seen and used every time, or the message says where to find it. An automated test can't cover the real dialog. |
+| TC-SEC-28 | FR-SEC-14, FR-SEC-16 | A/M | With a real vault on disk and unsaved text: go to sleep on the UI thread and from another thread; Windows shutting down; sleep during a running lock; a save that takes longer than the limit; a failure while locking. Each runs under a watchdog. Manual: type text, put the PC to sleep at once, wake it. | No freeze: the text is saved and the journal locked before the call returns; a running lock is joined, not repeated; past the limit the wait ends and is logged, and the lock finishes later; a failure is logged and not thrown. Manual: the unlock window shows after waking, and the text is there. |
 | TC-SEC-19 | FR-SEC-19 | M | Launch the app twice. | One window; second launch brings the first to the front. |
 | TC-SEC-20 | FR-SEC-03, FR-SEC-08 | M | On a real PC: run setup with fingerprint/face, close app, relaunch; check no Windows Hello prompt appears until Unlock with Windows Hello is clicked; unlock with biometric; repeat with PIN. | No prompt before the click; unlock works with biometric and with PIN. |
 | TC-SEC-21 | FR-SEC-10, FR-SEC-12 | M | Copy the vault to a second PC (or new Windows user), unlock with recovery code, accept Hello enrollment, relaunch. | Recovery unlock works; after enrollment the second PC unlocks with Hello. |
@@ -63,7 +65,7 @@
 | TC-ENT-04 | FR-ENT-04 | A | Open 2026-10-15 with culture en-US. | Heading = "Thursday, October 15, 2026". |
 | TC-ENT-05 | FR-ENT-05 | A | Type, wait 1.9 s (fake scheduler): no save. Wait to 2.0 s: save. Type, then switch date / switch tab / close. | Save count 0 at 1.9 s, 1 at 2.0 s; each of switch-date, switch-tab and close causes a save. |
 | TC-ENT-06 | FR-ENT-06 | A | Save succeeds at 10:42; then repository throws `IOException`. | Status "Saved 10:42"; then error status with retry; text remains in editor. |
-| TC-ENT-07 | FR-ENT-07 | I | Create entry with text, save; clear all text and save again. Separately save an entry that was never non-empty. | First: entry file deleted, catalog no longer has the date. Second: no file written. |
+| TC-ENT-07 | FR-ENT-07 | I | Create entry with text, save; clear all text and save again. Separately save an entry that was never non-empty. Ask each kind of block, and a document of mixed blocks, whether it is empty and which vault files it uses. | First: entry file deleted, catalog no longer has the date. Second: no file written. A paragraph is empty when blank; an image or file never is; a document is empty only if every block is, and lists files in block order (ISS-020). |
 | TC-ENT-08 | FR-ENT-08 | I | Entry with 1 image and 1 file; delete with confirmation; cancel in a second attempt. | Confirmed: entry, image blob and file blob removed. Cancelled: nothing removed. |
 | TC-ENT-09 | FR-ENT-09 | I | Corrupt one byte of one entry file; unlock and open that day and another day. | That day shows "This entry could not be read"; file bytes unchanged on disk; editor read-only for that day; other days open normally. |
 
@@ -82,7 +84,7 @@
 | TC-EDT-09 | FR-EDT-07 | A | Press Tab on a level-3 item; Shift+Tab on a level-0 item. | Level stays 3 (max 4 levels, 0–3); Shift+Tab at level 0 turns item into normal paragraph. |
 | TC-EDT-10 | FR-EDT-08, FR-EDT-11 | A | Two checklist items, second ticked. Round trip. Toggle first via `ToggleChecked`. | `IsChecked` preserved; each item's first inline is a `CheckBox`; toggle sets first item checked. |
 | TC-EDT-11 | FR-EDT-09 | A | Tick a checklist item, then untick. Render a ticked item with and without its strikethrough. | Rendered runs get strikethrough when ticked, lose it when unticked; stored run format unchanged (display-only). The checkbox and the gap before the text render identically with and without the strikethrough (no line through the checkbox, ISS-014); the text area differs. |
-| TC-EDT-12 | FR-EDT-10 | A | Place caret in a bold Georgia 14 pt red run in a numbered list; call `SyncFromSelection`. | Toolbar VM: IsBold, Font Georgia, Size 14, red, CurrentList = Numbered. Mixed selection shows empty font/size. |
+| TC-EDT-12 | FR-EDT-10 | A | Place caret in a bold Georgia 14 pt red run in a numbered list; call `JournalDocumentEditor.ReadFormatting`. | `FormattingState`: IsBold, Font Georgia, Size 14, red, List = Numbered. Mixed selection shows empty font/size. |
 | TC-EDT-13 | FR-EDT-11 | A | Property-based test: 500 random documents (all block kinds, run formats, list levels). Round trip model → FlowDocument → model. | All equal original. |
 | TC-EDT-14 | FR-EDT-11 | I | Save and reload through the encrypted repository a document with every feature. | Loaded document equals saved document. |
 | TC-EDT-16 | FR-EDT-10 | A | Open a day in the real main window without clicking in the text. | Font box shows "Segoe UI" and size box "11". |
@@ -97,12 +99,13 @@
 | TC-IMG-02 | FR-IMG-02 | I | Add sample PNG, JPEG, GIF (animated), BMP, TIFF; add a `.txt` renamed `.png`. | Valid formats accepted with correct pixel size (GIF first frame); invalid file rejected with "This file isn't an image Windows can open". |
 | TC-IMG-03 | FR-IMG-03 | A | Caret in the middle of "Hello world" after "Hello "; insert image. | Blocks: Paragraph "Hello ", ImageBlock, Paragraph "world". |
 | TC-IMG-04 | FR-IMG-03, FR-EDT-11 | A | Document: paragraph, image, paragraph, image, image, paragraph. Round trip. | Order and count preserved; images are `BlockUIContainer`s between paragraphs. |
-| TC-IMG-05 | FR-IMG-04 | A | Edit caption text in `ImageBlockView`; map back. | `ImageBlock.Caption` updated; `DocumentChanged` raised. |
+| TC-IMG-05 | FR-IMG-04 | A | Edit caption text in `ImageBlockView`; map back. | `ImageBlock.Caption` updated; `BlockEvents.ContentEditedEvent` raised. With two editors open, an edit or action affects only its own editor (ISS-019). |
 | TC-IMG-06 | FR-IMG-05 | A | 4000 px wide image in a 700 px editor; choose *Small*. | Displayed width ≤ editor width, aspect kept; *Small* sets `DisplayWidth` and survives round trip. |
 | TC-IMG-07 | FR-IMG-06 | I | Insert JPEG, save, export blob back. | Exported bytes SHA-256 equals original file; blob file on disk does not contain the JPEG header bytes `FF D8 FF`. |
 | TC-IMG-08 | FR-IMG-07 | M | Select an image block, press Delete, then Ctrl+Z. | Image removed; undo restores it with its caption. |
 | TC-IMG-09 | FR-IMG-08 | M | Double-click an image. | Full-size viewer opens inside the app; Esc closes it. |
 | TC-IMG-10 | FR-IMG-09 | A | Insert 50 MB + 1 byte image (fake file system). | Rejected with size message; no blob written. |
+| TC-IMG-11 | FR-IMG-05, FR-IMG-08 | A | Real images from the vault in the real main window: open several days in turn, returning to one; re-create an image from XAML, as undo does; edit a caption and remove an image after switching days. Ask for an image with the day closed. | Images load on every day opened. The re-created image loads. Edits and removal reach the editor. With the day closed, there is no answer, so nothing can load after a lock (ISS-019). |
 
 ### 2.5 Data files
 
@@ -110,7 +113,7 @@
 |---|---|---|---|---|
 | TC-ATT-01 | FR-ATT-01 | A | `AttachFileCommand` with `data.xlsx`; drop a `.csv` file onto editor. | `AttachmentBlock` at caret with file name, size, content type; blob stored. |
 | TC-ATT-02 | FR-ATT-02, FR-EDT-11 | A | Round trip a document containing an attachment with description "tomato yields". | `AttachmentChip` shows name, size "24 KB", description; model preserved. |
-| TC-ATT-03 | FR-ATT-03 | I | `ExportAttachmentToTempAsync`. | File created under the app's private temp folder with original name and identical bytes; folder ACL limited to current user. |
+| TC-ATT-03 | FR-ATT-03 | I | `TempFileManager` creates a temp copy of an attachment. | File created under the app's private temp folder with original name and identical bytes; folder ACL limited to current user. |
 | TC-ATT-03M | FR-ATT-03 | M | Double-click an attached `.xlsx` and `.pdf`. | Opened in Excel / PDF viewer. |
 | TC-ATT-04 | FR-ATT-04 | A | Execute *Save As…* to a fake path, *Edit description*, *Remove*. | File written with identical bytes; description updated; block removed. |
 | TC-ATT-05 | FR-ATT-05 | A | Attach 250 MB + 1 byte file (fake file system). | Rejected with size message. |
@@ -196,9 +199,9 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
-| TC-SET-01 | FR-SET-01 | A | Open `SettingsViewModel`. | Exposes auto-lock, week start, verse/quote options, imports, recovery code, Hello enrollment and vault location. |
+| TC-SET-01 | FR-SET-01 | A | Open `SettingsViewModel`. `SettingsActions`: apply settings; use it with the journal locked. | Exposes auto-lock, week start, verse/quote options, imports, recovery code, Hello enrollment and vault location. Settings are saved, and auto-lock and the week start change; while locked, it refuses the session and reports empty lists (ISS-018). |
 | TC-SET-02 | FR-SET-02 | I | Change auto-lock to 20, week start Monday, quote off; recreate settings store from disk. | Values persisted. |
-| TC-SET-03 | FR-SET-03 | I | Move vault with 50 entries to new folder; simulate copy failure in a second run. | Success: new folder unlocks with all entries, old folder removed. Failure: old vault untouched and still in use. |
+| TC-SET-03 | FR-SET-03 | I | Move vault with 50 entries to new folder; simulate copy failure in a second run. `SettingsActions`: move with unsaved text, recording the order of steps. | Success: new folder unlocks with all entries, old folder removed. Failure: old vault untouched and still in use. It saves first, then moves, closes Settings, remembers the folder and locks (ISS-018). |
 | TC-SET-04 | FR-SET-04 | I | Export backup. | Zip contains `vault.json`, `catalog.jcat`, `entries/*`, `blobs/*`; no plaintext entry text found in zip bytes. |
 | TC-SET-05 | FR-SET-05 | I | Restore zip to empty folder; unlock with recovery code. Restore into non-empty folder. | All entries readable; non-empty folder rejected. |
 
@@ -208,6 +211,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 |---|---|---|---|---|
 | TC-UI-01 | FR-UI-01 | A | Read the app's icon resource; create the main, unlock, setup and settings windows. | Icon contains 16, 24, 32, 48, 64 and 256 px images; every window's Icon is set; main, unlock and setup windows show the quill logo. |
 | TC-UI-02 | FR-UI-01 | M | Run the app at 100 % and 200 % display scaling; look at the taskbar, Alt+Tab, title bars, Explorer and the Start menu. | The quill shows everywhere, sharp at both scalings. |
+| TC-UI-03 | FR-UI-02 | A/M | Read the version built into the program; open the real Settings and unlock windows. Manual: install a release zip. | "Journal" and the version, visible in both windows, matching the build, with no "+…" suffix. Manual: it matches the release's name on GitHub. |
 
 ### 2.12 Day mood
 
@@ -232,12 +236,12 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | TC-NFR-06 | NFR-SEC-04 | I | List `entries/` after saving 2026-10-15. | No file name contains `2026`, `1015` or any date pattern; name is 64 hex chars; same date always yields same name in one vault, different names in two vaults. |
 | TC-NFR-07 | NFR-SEC-05 | I | Inspect recovery slot in `vault.json`. | `kdf = PBKDF2-SHA256`, iterations ≥ 600000, salt 16 bytes, salt differs between two vaults. |
 | TC-NFR-08 | NFR-SEC-06 | I | Run a scripted session (unlock with recovery code, write marker text, tag, caption, attach file, search) with logging at Trace; scan log files. | No marker text, tag, caption, file name, recovery code or base64 key material in logs. |
-| TC-NFR-09 | NFR-SEC-07 | I | After TC-NFR-08, scan `%APPDATA%\Journal\settings.json`. | No marker text, tags or imported list content. |
+| TC-NFR-09 | NFR-SEC-07 | A | With a real vault holding marker text in entries, tags, captions, file names and imported lists, save settings through the Settings window's logic with every choice ticked, then scan the saved file. | No marker text, tags or imported list content, and only the expected setting names. |
 | TC-NFR-10 | NFR-REL-01 | I | Inject failure after writing the temp file but before rename; then during temp write. | Original entry file still decrypts to the previous version; no `*.tmp` left after next unlock. |
 | TC-NFR-11 | NFR-REL-02 | I | Delete `catalog.jcat`; unlock. Then corrupt it; unlock. | Catalog rebuilt both times; calendar and search results equal those before. |
 | TC-NFR-12 | NFR-REL-03 | I | Remove an image from an entry and save; also remove the image, then undo before save. | First: blob deleted at the next clean-up (lock or unlock), never while the editor could still undo. Second: blob kept. Blob referenced by another entry is never deleted. |
 | TC-NFR-13 | NFR-PERF-01 | I | Vault with 3,650 generated entries; measure unlock (fake Hello) to catalog loaded and index built. | ≤ 2 s on the reference PC (release build, median of 5 runs). |
-| TC-NFR-14 | NFR-PERF-02 | A | Open text-only entry and an entry with 10 × 1 MB images from the 3,650-entry vault. | ≤ 300 ms and ≤ 1 s respectively (median of 5). |
+| TC-NFR-14 | NFR-PERF-02 | A | In the real main window with a 3,650-entry vault: open a text-only entry and an entry with 10 × 1 MB images, on days not opened before. Skipped by default; run with `JOURNAL_PERF=1` in Release. | ≤ 300 ms and ≤ 1 s respectively (median of 5). **Currently misses both:** 1,116 ms and 1,268 ms on 2026-11-04, see ISS-026. |
 | TC-NFR-15 | NFR-PERF-03 | U | 3,650-entry index; run 20 mixed queries. | Each ≤ 200 ms; median ≤ 50 ms. |
 | TC-NFR-16 | NFR-PERF-04 | M | Type continuously for 30 s in a long entry while autosave runs. | No visible stutter; save happens on a background thread (verified in log timing). |
 | TC-NFR-17 | NFR-USE-01 | M | Do a full session with keyboard only: unlock, change month, open day, write, add tag/tab, search, lock. | All possible without mouse; Accessibility Insights shows names for calendar cells, image captions, attachment chips. |
@@ -245,17 +249,17 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | TC-NFR-19 | NFR-COMP-01 | M | Install and run smoke test on Windows 10 22H2 x64 and Windows 11 (x64; ARM64 if available). | Setup, unlock, write, search, lock work. |
 | TC-NFR-20 | NFR-MNT-01 | U | Architecture test: inspect `Journal.Core` assembly references. | No reference to `PresentationFramework`, `WindowsBase`, `Microsoft.Windows.SDK.NET` or `Journal.Infrastructure`. |
 | TC-NFR-21 | NFR-MNT-02 | I | Read every persisted JSON (header, entry, catalog, settings, imported lists). | Each has `formatVersion`; reading a file with a higher unknown version reports "made by a newer version" instead of failing silently. |
-| TC-NFR-22 | NFR-MNT-03 | U | Run coverage with coverlet. | `Journal.Core` line coverage ≥ 85 %. |
+| TC-NFR-22 | NFR-MNT-03 | M | Before a release, run `dotnet test tests/Journal.Core.Tests --collect:"XPlat Code Coverage"` and read the line rate. | `Journal.Core` line coverage ≥ 85 % (88.3 % on 2026-11-04). |
 | TC-NFR-24 | NFR-USE-02, FR-EDT-01 | A | Open the real main window at 1000×650 with the longest verse and quote. | Editor text area ≥ 100 px tall and fully inside the window. |
 | TC-NFR-23 | NFR-LIC-01 | I | Check embedded content metadata and package licenses (`dotnet list package` + license scan). | Verse source = WEB (public domain); every quote records a public-domain source edition (e.g. George Long's 1862 Marcus Aurelius); all packages MIT/Apache/BSD. |
 
 ## 3. Traceability matrix
 
-146 requirements, 161 test cases. Every requirement is covered by at least one test.
+148 requirements, 165 test cases. Every requirement is covered by at least one test.
 
 | Requirement | Pri | Test cases |
 |---|---|---|
-| FR-SEC-01 | M | TC-SEC-01 (A) |
+| FR-SEC-01 | M | TC-SEC-01 (M) |
 | FR-SEC-02 | M | TC-SEC-02 (A) |
 | FR-SEC-03 | M | TC-SEC-03 (I), TC-SEC-20 (M) |
 | FR-SEC-04 | S | TC-SEC-04 (I) |
@@ -268,14 +272,15 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-SEC-11 | M | TC-SEC-11 (A) |
 | FR-SEC-12 | M | TC-SEC-12 (A), TC-SEC-21 (M) |
 | FR-SEC-13 | M | TC-SEC-13 (U) |
-| FR-SEC-14 | M | TC-SEC-14 (A), TC-SEC-14M (M) |
+| FR-SEC-14 | M | TC-SEC-14 (A), TC-SEC-14M (M), TC-SEC-28 (A/M) |
 | FR-SEC-15 | M | TC-SEC-15 (A) |
-| FR-SEC-16 | M | TC-SEC-16 (A) |
+| FR-SEC-16 | M | TC-SEC-16 (A), TC-SEC-28 (A/M) |
 | FR-SEC-17 | M | TC-SEC-17 (I) |
 | FR-SEC-18 | M | TC-SEC-18 (I) |
 | FR-SEC-20 | M | TC-SEC-22 (A/I) |
 | FR-SEC-19 | S | TC-SEC-19 (M) |
 | FR-SEC-21 | M | TC-SEC-26 (A/M) |
+| FR-SEC-22 | M | TC-SEC-27 (A/M) |
 | FR-ENT-01 | M | TC-ENT-01 (I) |
 | FR-ENT-02 | M | TC-ENT-02 (A) |
 | FR-ENT-03 | M | TC-ENT-03 (A) |
@@ -302,10 +307,10 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-IMG-02 | M | TC-IMG-02 (I) |
 | FR-IMG-03 | M | TC-IMG-03 (A), TC-IMG-04 (A) |
 | FR-IMG-04 | M | TC-IMG-05 (A) |
-| FR-IMG-05 | S | TC-IMG-06 (A) |
+| FR-IMG-05 | S | TC-IMG-06 (A), TC-IMG-11 (A) |
 | FR-IMG-06 | M | TC-IMG-07 (I) |
 | FR-IMG-07 | M | TC-IMG-08 (M) |
-| FR-IMG-08 | S | TC-IMG-09 (M) |
+| FR-IMG-08 | S | TC-IMG-09 (M), TC-IMG-11 (A) |
 | FR-IMG-09 | M | TC-IMG-10 (A) |
 | FR-ATT-01 | M | TC-ATT-01 (A), TC-ATT-08 (I) |
 | FR-ATT-02 | M | TC-ATT-02 (A) |
@@ -372,6 +377,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-SET-04 | S | TC-SET-04 (I) |
 | FR-SET-05 | S | TC-SET-05 (I) |
 | FR-UI-01 | S | TC-UI-01 (A), TC-UI-02 (M) |
+| FR-UI-02 | S | TC-UI-03 (A/M) |
 | FR-MOOD-01 | M | TC-MOOD-01 (U/A), TC-MOOD-06 (A/M) |
 | FR-MOOD-02 | M | TC-MOOD-02 (U/I) |
 | FR-MOOD-03 | M | TC-CAL-10 (M), TC-MOOD-03 (A), TC-MOOD-06 (A/M) |
@@ -383,7 +389,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | NFR-SEC-04 | M | TC-NFR-06 (I) |
 | NFR-SEC-05 | M | TC-NFR-07 (I) |
 | NFR-SEC-06 | M | TC-NFR-08 (I) |
-| NFR-SEC-07 | M | TC-NFR-09 (I) |
+| NFR-SEC-07 | M | TC-NFR-09 (A) |
 | NFR-SEC-08 | M | TC-NFR-01 (I) |
 | NFR-REL-01 | M | TC-NFR-10 (I) |
 | NFR-REL-02 | M | TC-NFR-11 (I) |
@@ -399,5 +405,5 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | NFR-COMP-01 | M | TC-NFR-19 (M) |
 | NFR-MNT-01 | M | TC-NFR-20 (U) |
 | NFR-MNT-02 | M | TC-NFR-21 (I) |
-| NFR-MNT-03 | S | TC-NFR-22 (U) |
+| NFR-MNT-03 | S | TC-NFR-22 (M) |
 | NFR-LIC-01 | M | TC-NFR-23 (I) |

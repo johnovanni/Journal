@@ -128,6 +128,10 @@ public sealed partial class EntryTabViewModel : ObservableObject
 
     public void MarkDirty() => Owner.MarkDirty();
 
+    /// <summary>Loads an image in this tab's editor; ends with the open journal (ISS-019).</summary>
+    public Task<System.Windows.Media.ImageSource?> LoadImageAsync(BlobRef blob, int decodePixelWidth) =>
+        _ctx.Images.LoadAsync(blob, decodePixelWidth);
+
     [RelayCommand]
     private async Task InsertImage()
     {

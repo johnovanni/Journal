@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Journal.App.Services;
 using Journal.App.ViewModels;
 using Journal.Core.Documents;
+using Journal.Core.Security;
 using Journal.Core.Settings;
 using Journal.Core.Tests.Support;
 using Journal.Infrastructure.Storage;
@@ -167,5 +168,27 @@ public sealed class AppHarness
         var host = (FakeHost)tab.Host!;
         host.Document = new JournalDocument([ParagraphBlock.OfText(text)]);
         tab.MarkDirty();
+    }
+}
+
+/// <summary>The Settings window's actions for tests; records the settings applied.</summary>
+public sealed class FakeSettingsHost(VaultSession session) : ISettingsHost
+{
+    public AppSettings? Applied { get; private set; }
+    public VaultSession Session => session;
+    public string VaultFolder => @"C:\vault";
+    public IReadOnlyList<string> AvailableBooks { get; init; } = ["Psalms", "Proverbs"];
+    public IReadOnlyList<Journal.Core.Inspiration.QuoteCategory> QuoteCategories { get; init; } =
+        [new("Literature", ["English", "Persian"]), new("Philosophy", ["Greek", "Stoic"])];
+    public int ImportedVerseCount => 0;
+    public int ImportedQuoteCount => 0;
+    public Task<string> ImportVersesAsync(string path) => Task.FromResult("Imported 1, skipped 0.");
+    public Task<string> ImportQuotesAsync(string path) => Task.FromResult("Imported 1, skipped 0.");
+    public Task MoveVaultAsync(string newFolder) => Task.CompletedTask;
+    public void ExportBackup(string zipPath) { }
+    public Task ApplySettingsAsync(AppSettings settings)
+    {
+        Applied = settings;
+        return Task.CompletedTask;
     }
 }

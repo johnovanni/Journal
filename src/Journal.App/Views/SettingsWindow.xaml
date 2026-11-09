@@ -35,6 +35,9 @@
                                 <Button Content="Move…" Command="{Binding MoveVaultCommand}" Margin="0,0,8,0" />
                                 <Button Content="Export backup…" Command="{Binding ExportBackupCommand}" />
                             </StackPanel>
+
+                            <TextBlock Text="ABOUT" Style="{StaticResource Label}" Margin="0,18,0,6" />
+                            <TextBlock x:Name="VersionLabel" Text="{Binding VersionText}" AutomationProperties.Name="Version" />
                         </StackPanel>
                     </Border>
                 </ScrollViewer>

@@ -22,7 +22,11 @@ public class SettingsLayoutTests
     [Fact(DisplayName = "TC-INSP-05 Settings lists run down columns: traditions alphabetical, books in Bible order")]
     public void ColumnLayout() => AppThread.Run(async () =>
     {
-        var host = new Host(new VaultSession(new InMemoryHeaderStore(), [new FakeKeyProtector(KeySlotTypes.RecoveryCode)], new FakeMachine(), new FakeClock()));
+        var host = new FakeSettingsHost(new VaultSession(new InMemoryHeaderStore(), [new FakeKeyProtector(KeySlotTypes.RecoveryCode)], new FakeMachine(), new FakeClock()))
+        {
+            AvailableBooks = Books,
+            QuoteCategories = [new("Literature", ["English", "Persian", "Chinese"]), new("Philosophy", PhilosophyTraditions)],
+        };
         var window = new SettingsWindow(new SettingsViewModel(host, new FakeDialogs(), new AppSettings()))
         {
             Left = -20000, ShowActivated = false, ShowInTaskbar = false,
@@ -85,21 +89,5 @@ public class SettingsLayoutTests
             if (child is T t) yield return t;
             foreach (var d in Descendants<T>(child)) yield return d;
         }
-    }
-
-    private sealed class Host(VaultSession session) : ISettingsHost
-    {
-        public VaultSession Session => session;
-        public string VaultFolder => @"C:\vault";
-        public IReadOnlyList<string> AvailableBooks => Books;
-        public IReadOnlyList<QuoteCategory> QuoteCategories =>
-            [new("Literature", ["English", "Persian", "Chinese"]), new("Philosophy", PhilosophyTraditions)];
-        public int ImportedVerseCount => 0;
-        public int ImportedQuoteCount => 0;
-        public Task<string> ImportVersesAsync(string path) => Task.FromResult("");
-        public Task<string> ImportQuotesAsync(string path) => Task.FromResult("");
-        public Task MoveVaultAsync(string newFolder) => Task.CompletedTask;
-        public void ExportBackup(string zipPath) { }
-        public Task ApplySettingsAsync(AppSettings settings) => Task.CompletedTask;
     }
 }

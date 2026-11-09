@@ -10,23 +10,44 @@ public enum AttachmentAction { Open, SaveAs, EditDescription, Remove }
 
 public enum ImageAction { View, Small, Medium, Full, Remove }
 
+/// <summary>An action asked of an embedded block; the block is the event's source.</summary>
+public sealed class BlockActionEventArgs<TAction>(RoutedEvent routedEvent, object source, TAction action) : RoutedEventArgs(routedEvent, source)
+{
+    public TAction Action { get; } = action;
+}
+
+/// <summary>An image asking its editor for its bitmap; the editor answers by setting <see cref="Result"/>.</summary>
+public sealed class ImageLoadEventArgs(RoutedEvent routedEvent, object source, BlobRef blob, int decodePixelWidth) : RoutedEventArgs(routedEvent, source)
+{
+    public BlobRef Blob { get; } = blob;
+    public int DecodePixelWidth { get; } = decodePixelWidth;
+    public Task<ImageSource?>? Result { get; set; }
+}
+
 /// <summary>
-/// Raised by embedded block controls when their content changes. Editors check whether the sender is in
-/// their own document. Static because WPF re-creates embedded controls from XAML on undo and paste.
+/// Raised by embedded block controls when their content changes or an action is asked for. These are routed
+/// events that bubble to the editor holding the block, so each editor hears only its own blocks. Routing also
+/// works for the controls WPF re-creates from XAML on undo, which can't be wired up one by one (ISS-019).
 /// </summary>
 public static class BlockEvents
 {
-    public static event EventHandler? ContentEdited;
-    public static event EventHandler<AttachmentAction>? AttachmentActionRequested;
-    public static event EventHandler<ImageAction>? ImageActionRequested;
+    public static readonly RoutedEvent ContentEditedEvent = EventManager.RegisterRoutedEvent(
+        "ContentEdited", RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(BlockEvents));
+    public static readonly RoutedEvent AttachmentActionEvent = EventManager.RegisterRoutedEvent(
+        "AttachmentAction", RoutingStrategy.Bubble, typeof(EventHandler<BlockActionEventArgs<AttachmentAction>>), typeof(BlockEvents));
+    public static readonly RoutedEvent ImageActionEvent = EventManager.RegisterRoutedEvent(
+        "ImageAction", RoutingStrategy.Bubble, typeof(EventHandler<BlockActionEventArgs<ImageAction>>), typeof(BlockEvents));
 
-    internal static void RaiseEdited(object sender) => ContentEdited?.Invoke(sender, EventArgs.Empty);
-    internal static void RaiseAttachment(object sender, AttachmentAction a) => AttachmentActionRequested?.Invoke(sender, a);
-    internal static void RaiseImage(object sender, ImageAction a) => ImageActionRequested?.Invoke(sender, a);
+    /// <summary>An image needs its bitmap. Each editor answers from its open day; with no open day there is no answer.</summary>
+    public static readonly RoutedEvent ImageLoadEvent = EventManager.RegisterRoutedEvent(
+        "ImageLoad", RoutingStrategy.Bubble, typeof(EventHandler<ImageLoadEventArgs>), typeof(BlockEvents));
+
+    internal static void RaiseEdited(UIElement sender) => sender.RaiseEvent(new RoutedEventArgs(ContentEditedEvent, sender));
+    internal static void RaiseAttachment(UIElement sender, AttachmentAction a) =>
+        sender.RaiseEvent(new BlockActionEventArgs<AttachmentAction>(AttachmentActionEvent, sender, a));
+    internal static void RaiseImage(UIElement sender, ImageAction a) =>
+        sender.RaiseEvent(new BlockActionEventArgs<ImageAction>(ImageActionEvent, sender, a));
 }
-
-/// <summary>Loads image bitmaps for <see cref="ImageBlockView"/> (set by the app after unlock, cleared on lock).</summary>
-public delegate Task<ImageSource?> ImageLoader(BlobRef blob, int decodePixelWidth);
 
 /// <summary>
 /// An image with its caption, hosted in a BlockUIContainer between paragraphs. All state is in plain
@@ -35,8 +56,6 @@ public delegate Task<ImageSource?> ImageLoader(BlobRef blob, int decodePixelWidt
 [TemplatePart(Name = "PART_Image", Type = typeof(Image))]
 public class ImageBlockView : Control
 {
-    public static ImageLoader? Loader { get; set; }
-
     public const double SmallWidth = 240, MediumWidth = 480;
     public const int MaxDecodeWidth = 1600;
 
@@ -49,7 +68,7 @@ public class ImageBlockView : Control
     public static readonly DependencyProperty BlobIdProperty = Register(nameof(BlobId), "");
     public static readonly DependencyProperty BlobShaProperty = Register(nameof(BlobSha), "");
     public static readonly DependencyProperty CaptionProperty = DependencyProperty.Register(nameof(Caption), typeof(string), typeof(ImageBlockView),
-        new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, (d, _) => BlockEvents.RaiseEdited(d)));
+        new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, (d, _) => BlockEvents.RaiseEdited((UIElement)d)));
     public static readonly DependencyProperty DisplayWidthProperty = DependencyProperty.Register(nameof(DisplayWidth), typeof(double), typeof(ImageBlockView),
         new PropertyMetadata(double.NaN, (d, _) => ((ImageBlockView)d).UpdateImageWidth()));
     public static readonly DependencyProperty PixelWidthProperty = DependencyProperty.Register(nameof(PixelWidth), typeof(int), typeof(ImageBlockView), new PropertyMetadata(0));
@@ -127,12 +146,14 @@ public class ImageBlockView : Control
 
     private async Task LoadImageAsync()
     {
-        if (_image is null || _image.Source is not null || Loader is null) return;
+        if (_image is null || _image.Source is not null) return;
         if (!Guid.TryParse(BlobId, out var blobId)) return;
         try
         {
             int decode = PixelWidth > 0 ? Math.Min(PixelWidth, MaxDecodeWidth) : MaxDecodeWidth;
-            _image.Source = await Loader(new BlobRef(blobId, BlobSha), decode);
+            var request = new ImageLoadEventArgs(BlockEvents.ImageLoadEvent, this, new BlobRef(blobId, BlobSha), decode);
+            RaiseEvent(request);
+            if (request.Result is { } result) _image.Source = await result;
         }
         catch (Exception)
         {
@@ -183,7 +204,7 @@ public class AttachmentChip : Control
     public static readonly DependencyProperty SizeBytesProperty = DependencyProperty.Register(nameof(SizeBytes), typeof(long), typeof(AttachmentChip),
         new PropertyMetadata(0L, (d, _) => ((AttachmentChip)d).SizeText = AttachmentBlock.FormatSize(((AttachmentChip)d).SizeBytes)));
     public static readonly DependencyProperty DescriptionProperty = DependencyProperty.Register(nameof(Description), typeof(string), typeof(AttachmentChip),
-        new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, (d, _) => BlockEvents.RaiseEdited(d)));
+        new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, (d, _) => BlockEvents.RaiseEdited((UIElement)d)));
     private static readonly DependencyPropertyKey SizeTextKey = DependencyProperty.RegisterReadOnly(nameof(SizeText), typeof(string), typeof(AttachmentChip), new PropertyMetadata("0 B"));
     public static readonly DependencyProperty SizeTextProperty = SizeTextKey.DependencyProperty;
 

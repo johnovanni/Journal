@@ -23,6 +23,9 @@ public sealed partial class UnlockViewModel : ObservableObject
     [ObservableProperty] private bool _canUseHello;
     [ObservableProperty] private string _recoveryInput = "";
 
+    /// <summary>"Journal 1.1.0", so the version can be checked without unlocking (FR-UI-02).</summary>
+    public string VersionText => AppInfo.NameAndVersion;
+
     public event EventHandler<UnlockedEventArgs>? Unlocked;
     public event EventHandler? OpenOtherRequested;
 
@@ -68,8 +71,10 @@ public sealed partial class UnlockViewModel : ObservableObject
 
     partial void OnCanUseHelloChanged(bool value) => OnPropertyChanged(nameof(ShowMainDisplayHint));
 
-    /// <summary>True while a Windows Hello request is waiting for the user.</summary>
-    public bool IsHelloPending => _helloRequest is not null;
+    public const string HelloWaitingHint = "Waiting for Windows Hello. If you don't see it, it may be behind this window. Press Alt+Tab to find it.";
+
+    /// <summary>True while a Windows Hello request is waiting for the user; the window then says so (ISS-023).</summary>
+    [ObservableProperty] private bool _isHelloPending;
 
     private void SetBusy(bool on)
     {
@@ -83,6 +88,7 @@ public sealed partial class UnlockViewModel : ObservableObject
     {
         if (IsBusy || _session.IsUnlocked) return;
         _helloRequest = new CancellationTokenSource();
+        IsHelloPending = true;
         SetBusy(true);
         Error = "";
         try
@@ -104,6 +110,7 @@ public sealed partial class UnlockViewModel : ObservableObject
         {
             _helloRequest.Dispose();
             _helloRequest = null;
+            IsHelloPending = false;
             SetBusy(false);
         }
     }

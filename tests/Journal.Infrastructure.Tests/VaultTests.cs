@@ -126,6 +126,57 @@ public class VaultTests
         Assert.Equal("kids", back.Tabs[1].Document.ExtractPlainText());
     }
 
+    [Fact(DisplayName = "TC-TAB-07 Different text, images and files in two tabs stay independent through save and reload")]
+    public async Task TabsAreIndependent()
+    {
+        await using var v = await TempVault.CreateAsync();
+        byte[] homeImage = [1, 1, 1], workImage = [2, 2, 2, 2], homeFile = [3, 3, 3, 3, 3], workFile = [4, 4, 4, 4, 4, 4];
+
+        async Task<JournalDocument> Fill(string name, byte[] image, byte[] file)
+        {
+            var img = await v.Journal.AddBlobAsync(new MemoryStream(image));
+            var att = await v.Journal.AddBlobAsync(new MemoryStream(file));
+            return new JournalDocument([
+                ParagraphBlock.OfText($"{name} text"),
+                new ImageBlock { Image = img, Caption = $"{name} caption" },
+                new AttachmentBlock { File = att, FileName = $"{name}.xlsx", SizeBytes = file.Length, Description = $"{name} description" },
+            ]);
+        }
+
+        var e = (await v.Journal.OpenDayAsync(TestData.Today)).Entry!;
+        e.DefaultTab.Document = await Fill("home", homeImage, homeFile);
+        var workTab = e.AddTab(Tag.Parse("work"));
+        workTab.Document = await Fill("work", workImage, workFile);
+        var homeJson = JournalJson.SerializeDocument(e.DefaultTab.Document);
+        var workJson = JournalJson.SerializeDocument(workTab.Document);
+        await v.Journal.SaveAsync(e);
+
+        await v.ReopenAsync();
+        var back = (await v.Journal.OpenDayAsync(TestData.Today)).Entry!;
+        Assert.Equal(homeJson, JournalJson.SerializeDocument(back.DefaultTab.Document));
+        Assert.Equal(workJson, JournalJson.SerializeDocument(back.Tabs[1].Document));
+
+        // Each tab's image and file still hold that tab's bytes.
+        Assert.Equal(homeImage, await v.Journal.ReadBlobAsync(back.DefaultTab.Document.Images().Single().Image));
+        Assert.Equal(homeFile, await v.Journal.ReadBlobAsync(back.DefaultTab.Document.Attachments().Single().File));
+        Assert.Equal(workImage, await v.Journal.ReadBlobAsync(back.Tabs[1].Document.Images().Single().Image));
+        Assert.Equal(workFile, await v.Journal.ReadBlobAsync(back.Tabs[1].Document.Attachments().Single().File));
+
+        // Changing one tab leaves the other alone, and removing the work tab keeps the home tab's files.
+        back.Tabs[1].Document.Blocks.Add(ParagraphBlock.OfText("more work"));
+        await v.Journal.SaveAsync(back);
+        await v.ReopenAsync();
+        var again = (await v.Journal.OpenDayAsync(TestData.Today)).Entry!;
+        Assert.Equal(homeJson, JournalJson.SerializeDocument(again.DefaultTab.Document));
+        Assert.NotEqual(workJson, JournalJson.SerializeDocument(again.Tabs[1].Document));
+
+        again.RemoveTab(again.Tabs[1].Id);
+        await v.Journal.SaveAsync(again);
+        await v.Journal.CollectGarbageAsync([]);
+        Assert.Equal(homeImage, await v.Journal.ReadBlobAsync(again.DefaultTab.Document.Images().Single().Image));
+        Assert.Equal(homeFile, await v.Journal.ReadBlobAsync(again.DefaultTab.Document.Attachments().Single().File));
+    }
+
     [Fact(DisplayName = "TC-IMG-07 Stored image bytes are the original, and the blob file is encrypted")]
     public async Task ImageBlobIsOriginalAndEncrypted()
     {
@@ -324,16 +375,6 @@ public class VaultTests
             typeof(TempVault).GetProperty("Services")!.SetValue(v, await VaultServices.OpenAsync(v.Session, v.Folder, v.Clock, () => v.Inspiration));
         }
         Assert.True(times.Order().ElementAt(2) <= 2.0, $"median {times.Order().ElementAt(2):0.00} s");
-    }
-}
-
-/// <summary>Performance tests run only when JOURNAL_PERF=1 (use a Release build).</summary>
-public sealed class PerfFactAttribute : FactAttribute
-{
-    public PerfFactAttribute()
-    {
-        if (Environment.GetEnvironmentVariable("JOURNAL_PERF") != "1")
-            Skip = "Performance test: set JOURNAL_PERF=1 and run in Release.";
     }
 }
 

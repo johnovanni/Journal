@@ -83,6 +83,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly Dictionary<string, CheckItem> _traditionItems = new(StringComparer.OrdinalIgnoreCase);
     public ObservableCollection<string> HelloMachines { get; } = [];
     public string ThisMachine => _host.Session.MachineName;
+    /// <summary>"Journal 1.1.0" (FR-UI-02).</summary>
+    public string VersionText => AppInfo.NameAndVersion;
 
     public SettingsViewModel(ISettingsHost host, IDialogService dialogs, AppSettings current)
     {

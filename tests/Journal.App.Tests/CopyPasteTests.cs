@@ -59,7 +59,7 @@ public class CopyPasteTests
     private static (RichTextBox Box, Window Host) Editor(params DocBlock[] blocks)
     {
         var box = new RichTextBox { Document = Mapper.ToFlowDocument(new JournalDocument(blocks)), IsDocumentEnabled = true };
-        JournalClipboard.Attach(box, () => true, () => { });
+        new JournalDocumentEditor(box).AttachClipboard(() => true, () => { });
         var host = new Window { Content = box, Left = -20000, Width = 600, Height = 400, ShowActivated = false, ShowInTaskbar = false };
         host.Show();
         return (box, host);
@@ -112,11 +112,11 @@ public class CopyPasteTests
 
         // Inside one plain paragraph: WPF's copy already keeps formatting, so no journal content is added.
         box.Selection.Select(first.ContentStart.GetPositionAtOffset(3), first.ContentStart.GetPositionAtOffset(10));
-        Assert.Null(JournalClipboard.Fragment(box));
+        Assert.Null(new JournalDocumentEditor(box).SelectionFragment());
 
         // From "wonderful" in the first paragraph to "Buy" in the checklist item.
         box.Selection.Select(FindText(first, "wonderful"), FindText(second, " seeds"));
-        var fragment = JournalClipboard.Fragment(box)!;
+        var fragment = new JournalDocumentEditor(box).SelectionFragment()!;
         Assert.Equal(2, fragment.Blocks.Count);
         var p1 = (ParagraphBlock)fragment.Blocks[0];
         var p2 = (ParagraphBlock)fragment.Blocks[1];
@@ -141,7 +141,7 @@ public class CopyPasteTests
         var (box, host) = Editor(new ParagraphBlock(new TextRun("Plans")) { Style = ParagraphStyle.Heading1 }, ParagraphBlock.OfText("x"));
         var heading = (WpfParagraph)box.Document.Blocks.FirstBlock;
         box.Selection.Select(heading.ContentStart, heading.ContentEnd);
-        var fragment = JournalClipboard.Fragment(box)!;
+        var fragment = new JournalDocumentEditor(box).SelectionFragment()!;
         Assert.Equal(ParagraphStyle.Heading1, Assert.IsType<ParagraphBlock>(Assert.Single(fragment.Blocks)).Style);
         host.Close();
     });

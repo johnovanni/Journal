@@ -27,6 +27,9 @@
                            Visibility="{Binding ShowMainDisplayHint, Converter={StaticResource BoolToVis}}" />
             </StackPanel>
 
+            <TextBlock x:Name="HelloWaitingHint" Text="{x:Static vm:UnlockViewModel.HelloWaitingHint}" Style="{StaticResource Muted}"
+                       TextWrapping="Wrap" Margin="2,8,0,0" Visibility="{Binding IsHelloPending, Converter={StaticResource BoolToVis}}" />
+
             <TextBlock Text="{Binding Error}" Style="{StaticResource ErrorText}" Margin="0,12,0,0" />
 
             <StackPanel Margin="0,12,0,0" Visibility="{Binding ShowRecovery, Converter={StaticResource BoolToVis}}">
@@ -46,6 +49,8 @@
                 <Button Style="{StaticResource LinkButton}" Content="Open another journal or backup…" Command="{Binding OpenOtherCommand}" />
             </StackPanel>
             <ProgressBar IsIndeterminate="True" Height="3" Margin="0,16,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+            <TextBlock x:Name="VersionLabel" Text="{Binding VersionText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,14,0,0"
+                       AutomationProperties.Name="Version" />
         </StackPanel>
     </Border>
 </Window>

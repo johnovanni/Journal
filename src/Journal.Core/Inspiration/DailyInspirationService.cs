@@ -1,90 +1,6 @@
-using System.Security.Cryptography;
-using System.Text;
 using Journal.Core.Domain;
 
 namespace Journal.Core.Inspiration;
-
-public enum SelectionMode
-{
-    /// <summary>The same date gets the same item every year.</summary>
-    DayOfYear,
-    /// <summary>A random item per date, stable for that date and vault.</summary>
-    RandomPerDay,
-}
-
-public static class SourceNames
-{
-    public const string BuiltIn = "builtin";
-    public const string Imported = "imported";
-}
-
-public sealed record InspirationSettings
-{
-    public bool ShowVerse { get; init; } = true;
-    public bool ShowQuote { get; init; } = true;
-    public string VerseSource { get; init; } = SourceNames.BuiltIn;
-    public IReadOnlySet<string> VerseBooks { get; init; } = new HashSet<string>();
-    public string QuoteSource { get; init; } = SourceNames.BuiltIn;
-    public IReadOnlySet<string> Traditions { get; init; } = new HashSet<string>();
-    /// <summary>
-    /// Quote categories the user turned off (FR-INSP-17). Stored as the ones turned off, so a category
-    /// added to the content later is shown until the user turns it off.
-    /// </summary>
-    public IReadOnlySet<string> HiddenCategories { get; init; } = new HashSet<string>();
-    public SelectionMode Mode { get; init; } = SelectionMode.DayOfYear;
-}
-
-public interface IVerseSource
-{
-    string Name { get; }
-    IReadOnlyList<Verse> All();
-}
-
-public interface IQuoteSource
-{
-    string Name { get; }
-    IReadOnlyList<Quote> All();
-}
-
-public interface ISelectionStrategy
-{
-    int SelectIndex(int count, DateOnly date, Guid vaultId, string salt);
-}
-
-public sealed class DayOfYearStrategy : ISelectionStrategy
-{
-    public int SelectIndex(int count, DateOnly date, Guid vaultId, string salt) =>
-        count == 0 ? -1 : (date.DayOfYear - 1) % count;
-}
-
-public sealed class SeededRandomStrategy : ISelectionStrategy
-{
-    public int SelectIndex(int count, DateOnly date, Guid vaultId, string salt)
-    {
-        if (count == 0) return -1;
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{vaultId:N}|{date:yyyy-MM-dd}|{salt}"));
-        return (int)(BitConverter.ToUInt32(hash, 0) % (uint)count);
-    }
-}
-
-/// <summary>A quote category and the traditions its quotes come from.</summary>
-public sealed record QuoteCategory(string Name, IReadOnlyList<string> Traditions);
-
-/// <summary>A ticked tradition saved with its category, e.g. "Philosophy/Chinese" (ISS-015).</summary>
-public static class TraditionChoice
-{
-    public const char Separator = '/';
-
-    public static string Make(string category, string tradition) => $"{category}{Separator}{tradition}";
-
-    public static bool TryParse(string choice, out string category, out string tradition)
-    {
-        var i = choice.IndexOf(Separator);
-        category = i > 0 ? choice[..i] : "";
-        tradition = i > 0 ? choice[(i + 1)..] : choice;
-        return i > 0 && tradition.Length > 0;
-    }
-}
 
 public sealed record InspirationResult(DailyInspiration Inspiration, IReadOnlyList<string> Warnings);
 
@@ -277,17 +193,4 @@ public sealed class DailyInspirationService
 
     private static ISelectionStrategy Strategy(SelectionMode mode) =>
         mode == SelectionMode.RandomPerDay ? new SeededRandomStrategy() : new DayOfYearStrategy();
-}
-
-/// <summary>A verse or quote source backed by an in-memory list (imported lists, tests).</summary>
-public sealed class ListVerseSource(string name, Func<IReadOnlyList<Verse>> items) : IVerseSource
-{
-    public string Name => name;
-    public IReadOnlyList<Verse> All() => items();
-}
-
-public sealed class ListQuoteSource(string name, Func<IReadOnlyList<Quote>> items) : IQuoteSource
-{
-    public string Name => name;
-    public IReadOnlyList<Quote> All() => items();
 }

@@ -111,7 +111,7 @@ public class MapperTests
         var first = (WpfParagraph)box.Document.Blocks.FirstBlock;
         Assert.NotNull(FlowDocumentMapper.GetCheckBox(first));
         box.CaretPosition = first.ContentEnd;
-        Assert.True(EditorOperations.ToggleChecked(box));
+        Assert.True(new JournalDocumentEditor(box).ToggleChecked());
         Assert.True(((ParagraphBlock)Mapper.FromFlowDocument(box.Document).Blocks[0]).IsChecked);
     });
 
@@ -123,7 +123,7 @@ public class MapperTests
         var p = (WpfParagraph)fd.Blocks.FirstBlock;
         Assert.Contains(p.TextDecorations, d => d.Location == TextDecorationLocation.Strikethrough);
         Assert.Equal(RunFormat.None, ((ParagraphBlock)Mapper.FromFlowDocument(fd).Blocks[0]).Runs[0].Format);
-        EditorOperations.ApplyCheckedDecoration(p, false);
+        JournalDocumentEditor.ApplyCheckedDecoration(p, false);
         Assert.Empty(p.TextDecorations ?? []);
     });
 
@@ -145,7 +145,7 @@ public class MapperTests
     {
         var box = new RichTextBox { Document = Mapper.ToFlowDocument(new JournalDocument([item])), Width = 300, Height = 60, BorderThickness = new Thickness(0) };
         var p = (WpfParagraph)box.Document.Blocks.FirstBlock;
-        EditorOperations.ApplyCheckedDecoration(p, strike);
+        JournalDocumentEditor.ApplyCheckedDecoration(p, strike);
         var host = new Window { Content = box, Left = -20000, SizeToContent = SizeToContent.WidthAndHeight, ShowActivated = false, ShowInTaskbar = false };
         host.Show();
         box.UpdateLayout();
@@ -238,7 +238,7 @@ public class MapperTests
         var p = (WpfParagraph)box.Document.Blocks.FirstBlock;
         box.CaretPosition = p.ContentStart.GetPositionAtOffset(1 + "Hello ".Length)!;
         var img = new ImageBlock { Image = new BlobRef(Guid.NewGuid(), "x") };
-        EditorOperations.InsertBlockAtCaret(box, FlowDocumentMapper.ImageContainer(img));
+        new JournalDocumentEditor(box).InsertBlockAtCaret(FlowDocumentMapper.ImageContainer(img));
         var blocks = Mapper.FromFlowDocument(box.Document).Blocks;
         Assert.Equal(3, blocks.Count);
         Assert.Equal("Hello ", ((ParagraphBlock)blocks[0]).PlainText);
@@ -259,12 +259,10 @@ public class MapperTests
     public void CaptionEdit() => Sta.Run(() =>
     {
         var view = ImageBlockView.From(new ImageBlock { Image = new BlobRef(Guid.NewGuid(), "x") });
-        object? sender = null;
-        void Handler(object? s, EventArgs e) => sender = s;
-        BlockEvents.ContentEdited += Handler;
-        try { view.Caption = "Garden at sunrise"; }
-        finally { BlockEvents.ContentEdited -= Handler; }
-        Assert.Same(view, sender);
+        object? source = null;
+        view.AddHandler(BlockEvents.ContentEditedEvent, new RoutedEventHandler((_, e) => source = e.OriginalSource));
+        view.Caption = "Garden at sunrise";
+        Assert.Same(view, source);
         Assert.Equal("Garden at sunrise", view.ToBlock().Caption);
     });
 
@@ -319,10 +317,10 @@ public class EditorOperationTests
     {
         var box = Box(ParagraphBlock.OfText("cross me out"));
         box.SelectAll();
-        EditorOperations.ToggleTextDecoration(box, TextDecorationLocation.Strikethrough);
+        new JournalDocumentEditor(box).ToggleTextDecoration(TextDecorationLocation.Strikethrough);
         Assert.True(((ParagraphBlock)Mapper.FromFlowDocument(box.Document).Blocks[0]).Runs.All(r => r.Format.HasFlag(RunFormat.Strikethrough)));
         box.SelectAll();
-        EditorOperations.ToggleTextDecoration(box, TextDecorationLocation.Strikethrough);
+        new JournalDocumentEditor(box).ToggleTextDecoration(TextDecorationLocation.Strikethrough);
         Assert.True(((ParagraphBlock)Mapper.FromFlowDocument(box.Document).Blocks[0]).Runs.All(r => !r.Format.HasFlag(RunFormat.Strikethrough)));
     });
 
@@ -340,13 +338,13 @@ public class EditorOperationTests
         var box = Box(new ParagraphBlock(new TextRun("task")) { List = ListKind.Checklist, ListLevel = 3 });
         var p = (WpfParagraph)box.Document.Blocks.FirstBlock;
         box.CaretPosition = p.ContentEnd;
-        Assert.True(EditorOperations.Indent(box, 1));
+        Assert.True(new JournalDocumentEditor(box).Indent(1));
         Assert.Equal(3, ((ParagraphBlock)Mapper.FromFlowDocument(box.Document).Blocks[0]).ListLevel);
-        for (int i = 0; i < 5; i++) EditorOperations.Indent(box, -1);
+        for (int i = 0; i < 5; i++) new JournalDocumentEditor(box).Indent(-1);
         Assert.Equal(0, ((ParagraphBlock)Mapper.FromFlowDocument(box.Document).Blocks[0]).ListLevel);
         var plain = Box(ParagraphBlock.OfText("not a list"));
         plain.CaretPosition = plain.Document.ContentEnd;
-        Assert.False(EditorOperations.Indent(plain, 1));
+        Assert.False(new JournalDocumentEditor(plain).Indent(1));
     });
 
     [Fact(DisplayName = "TC-EDT-08 Toggling a checklist adds and removes checkboxes")]
@@ -354,10 +352,10 @@ public class EditorOperationTests
     {
         var box = Box(ParagraphBlock.OfText("a"), ParagraphBlock.OfText("b"));
         box.SelectAll();
-        EditorOperations.ToggleChecklist(box);
+        new JournalDocumentEditor(box).ToggleChecklist();
         Assert.All(Mapper.FromFlowDocument(box.Document).Blocks.Cast<ParagraphBlock>(), p => Assert.Equal(ListKind.Checklist, p.List));
         box.SelectAll();
-        EditorOperations.ToggleChecklist(box);
+        new JournalDocumentEditor(box).ToggleChecklist();
         Assert.All(Mapper.FromFlowDocument(box.Document).Blocks.Cast<ParagraphBlock>(), p => Assert.Equal(ListKind.None, p.List));
     });
 
@@ -368,7 +366,7 @@ public class EditorOperationTests
         var list = (DocList)box.Document.Blocks.FirstBlock;
         var p = (WpfParagraph)list.ListItems.FirstListItem.Blocks.FirstBlock;
         box.Selection.Select(p.ContentStart.GetPositionAtOffset(2)!, p.ContentStart.GetPositionAtOffset(4)!);
-        var f = EditorOperations.ReadFormatting(box);
+        var f = new JournalDocumentEditor(box).ReadFormatting();
         Assert.True(f.IsBold);
         Assert.Equal("Georgia", f.FontFamily);
         Assert.Equal(14, f.FontSizePt);
@@ -384,7 +382,7 @@ public class EditorOperationTests
         box.CaretPosition = first.ContentEnd;
         var next = box.CaretPosition.InsertParagraphBreak();
         box.CaretPosition = next;
-        EditorOperations.AfterEnter(box, first);
+        new JournalDocumentEditor(box).AfterEnter(first);
         var blocks = Mapper.FromFlowDocument(box.Document).Blocks.Cast<ParagraphBlock>().ToList();
         Assert.Equal(ListKind.Checklist, blocks[^1].List);
         Assert.False(blocks[^1].IsChecked);

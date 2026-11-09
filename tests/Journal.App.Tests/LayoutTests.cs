@@ -54,7 +54,7 @@ public static class AppThread
 
     private static readonly SemaphoreSlim Gate = new(1, 1);
 
-    public static void Run(Func<Task> test)
+    public static void Run(Func<Task> test, TimeSpan? timeout = null)
     {
         Gate.Wait();
         try
@@ -65,8 +65,11 @@ public static class AppThread
                 try { await test(); done.SetResult(); }
                 catch (Exception e) { done.SetException(e); }
             });
-            try { done.Task.Wait(TimeSpan.FromSeconds(60)); }
-            catch (AggregateException e) { ExceptionDispatchInfo.Capture(e.InnerException!).Throw(); }
+            var limit = timeout ?? TimeSpan.FromSeconds(60);
+            bool finished;
+            try { finished = done.Task.Wait(limit); }
+            catch (AggregateException e) { ExceptionDispatchInfo.Capture(e.InnerException!).Throw(); throw; }
+            Assert.True(finished, $"the test didn't finish within {limit.TotalSeconds:0} seconds");
         }
         finally { Gate.Release(); }
     }

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 (approved; updated during build) |
-| **Date** | 2026-10-15 |
+| **Version** | 1.2 (approved 2026-10-15; updated through ISS-024) |
+| **Date** | 2026-11-04 |
 | **Based on** | Architecture & Design v0.2 (approved) |
 
 ## 1. Conventions
@@ -40,6 +40,7 @@
 | FR-SEC-20 | The app shall never leave a Windows Hello request waiting that the user can't see: tests and tools shall not start the app; closing the unlock or setup window, exiting, or starting a recovery-code unlock shall cancel a waiting request; and the recovery code shall work while a request is waiting. (Windows doesn't let an app close the dialog itself; see ISS-007.) | M |
 | FR-SEC-19 | Only one instance of the app shall run; launching again shall bring the existing window to the front. | S |
 | FR-SEC-21 | Closing the main window shall, in one click, save the open day, lock the vault, delete temporary files and end the app's process, whether or not anything needed saving. If saving or locking fails, the app shall say so and still exit (ISS-016). | M |
+| FR-SEC-22 | Windows Hello shall be allowed to come in front of the journal when it opens. While a request waits, the unlock window shall say so and say how to find the dialog if it can't be seen (ISS-023). | M |
 
 ### 2.2 Entries and days (ENT)
 
@@ -186,6 +187,7 @@
 | ID | Requirement | Pri |
 |---|---|---|
 | FR-UI-01 | The app shall have a quill logo, used as the program icon (Explorer, Start menu, shortcuts), as the title-bar, taskbar and Alt+Tab icon of every window, and shown in the main window's top bar and at the top of the unlock and setup windows. | S |
+| FR-UI-02 | Settings → General and the unlock window shall show the app's name and version, read from the running program and without the build's commit suffix, for example "Journal 1.1.0" (ISS-017). | S |
 
 ### 2.12 Day mood (MOOD)
 

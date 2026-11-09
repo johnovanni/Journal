@@ -293,7 +293,7 @@ public class AttachmentViewModelTests
         Assert.Empty(host.Inserted);
     });
 
-    [Fact(DisplayName = "TC-ATT-01/04 Attach, save as, and open a file (with a one-time notice)")]
+    [Fact(DisplayName = "TC-ATT-01/04/07 Attach, save as, and open a file (with a one-time notice)")]
     public void Attachments() => Sta.Run(async () =>
     {
         var (h, tab, host) = await Setup();
@@ -583,25 +583,4 @@ public class SecurityViewModelTests
         Assert.True(again.CategorySections[1].Traditions.Single(t => t.Name == "Persian").IsChecked);
         Assert.False(again.CategorySections[1].Traditions.Single(t => t.Name == "English").IsChecked);
     });
-
-    private sealed class FakeSettingsHost(VaultSession session) : ISettingsHost
-    {
-        public AppSettings? Applied { get; private set; }
-        public VaultSession Session => session;
-        public string VaultFolder => @"C:\vault";
-        public IReadOnlyList<string> AvailableBooks => ["Psalms", "Proverbs"];
-        public IReadOnlyList<Journal.Core.Inspiration.QuoteCategory> QuoteCategories { get; init; } =
-            [new("Literature", ["English", "Persian"]), new("Philosophy", ["Greek", "Stoic"])];
-        public int ImportedVerseCount => 0;
-        public int ImportedQuoteCount => 0;
-        public Task<string> ImportVersesAsync(string path) => Task.FromResult("Imported 1, skipped 0.");
-        public Task<string> ImportQuotesAsync(string path) => Task.FromResult("Imported 1, skipped 0.");
-        public Task MoveVaultAsync(string newFolder) => Task.CompletedTask;
-        public void ExportBackup(string zipPath) { }
-        public Task ApplySettingsAsync(AppSettings settings)
-        {
-            Applied = settings;
-            return Task.CompletedTask;
-        }
-    }
 }
