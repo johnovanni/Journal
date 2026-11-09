@@ -31,7 +31,7 @@ public sealed class SettingsActions(
 
     public VaultSession Session => journal.Session ?? throw new InvalidOperationException("The journal is locked.");
     public string VaultFolder => journal.VaultFolder;
-    public IReadOnlyList<string> AvailableBooks => journal.Services?.Journal.Inspiration.AvailableBooks() ?? [];
+    public IReadOnlyList<VerseTradition> VerseTraditions => journal.Services?.Journal.Inspiration.AvailableVerseTraditions() ?? [];
     public IReadOnlyList<QuoteCategory> QuoteCategories => journal.Services?.Journal.Inspiration.AvailableCategories() ?? [];
     public int ImportedVerseCount => journal.Services?.ImportedVerses.Count ?? 0;
     public int ImportedQuoteCount => journal.Services?.ImportedQuotes.Count ?? 0;

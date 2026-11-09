@@ -87,7 +87,11 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
         await actions.ImportQuotesAsync(quotes);
 
         var vm = new SettingsViewModel(actions, new FakeDialogs(), new AppSettings { VaultFolder = folder }) { UseImportedQuotes = true, UseImportedVerses = true };
-        foreach (var book in vm.Books) book.IsChecked = true;
+        foreach (var section in vm.VerseSections)
+        {
+            section.IsIncluded = true;
+            foreach (var book in section.Books) book.IsChecked = true;
+        }
         foreach (var section in vm.CategorySections)
             foreach (var tradition in section.Traditions) tradition.IsChecked = true;
         await vm.SaveCommand.ExecuteAsync(null);
@@ -100,7 +104,7 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
         using var doc = JsonDocument.Parse(saved);
         Assert.Equal(["attachmentNoticeShown", "autoLockMinutes", "formatVersion", "inspiration", "vaultFolder", "weekStart"],
             doc.RootElement.EnumerateObject().Select(p => p.Name).Where(n => n != "autoLockTimeout").Order(StringComparer.Ordinal));
-        Assert.Equal(["hiddenCategories", "mode", "quoteSource", "showQuote", "showVerse", "traditions", "verseBooks", "verseSource"],
+        Assert.Equal(["hiddenCategories", "mode", "quoteSource", "showQuote", "showVerse", "traditions", "verseBooks", "verseSource", "verseTraditions"],
             doc.RootElement.GetProperty("inspiration").EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
     });
 

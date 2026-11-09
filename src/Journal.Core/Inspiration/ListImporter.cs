@@ -19,7 +19,7 @@ public static class ListImporter
 {
     public static ImportResult<Verse> ImportVerses(string content, string fileName)
     {
-        var rows = Rows(content, fileName, ["reference", "text", "translation"]);
+        var rows = Rows(content, fileName, ["reference", "text", "translation", "scripture"]);
         var items = new List<Verse>();
         int skipped = 0;
         foreach (var r in rows)
@@ -28,7 +28,11 @@ public static class ListImporter
             var text = r.GetValueOrDefault("text")?.Trim();
             if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(text)) { skipped++; continue; }
             var translation = r.GetValueOrDefault("translation")?.Trim();
-            items.Add(new Verse(reference, text, string.IsNullOrEmpty(translation) ? "" : translation));
+            var scripture = r.GetValueOrDefault("scripture")?.Trim();
+            items.Add(new Verse(reference, text, string.IsNullOrEmpty(translation) ? "" : translation)
+            {
+                Scripture = string.IsNullOrEmpty(scripture) ? null : scripture,
+            });
         }
         if (items.Count == 0) throw new ImportException("The file has no valid verses. Each row needs a reference and text.");
         return new ImportResult<Verse>(items, skipped);

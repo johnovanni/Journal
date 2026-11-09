@@ -29,12 +29,28 @@ public sealed partial class QuoteCategorySection(string name, bool isIncluded, I
     public IReadOnlyList<CheckItem> Traditions { get; } = [.. traditions.OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)];
 }
 
+/// <summary>
+/// One verse tradition in Settings (FR-INSP-20): whether it is included, and which of its books. A tradition
+/// with a single book shows no book list.
+/// </summary>
+public sealed partial class VerseTraditionSection(string name, IReadOnlyList<string> scriptures, bool isIncluded, IEnumerable<CheckItem> books) : ObservableObject
+{
+    public string Name { get; } = name;
+    public string Heading => Name.ToUpperInvariant();
+    public string IncludeLabel => $"Include {Name}: {string.Join(", ", scriptures)}";
+    [ObservableProperty] private bool _isIncluded = isIncluded;
+    /// <summary>The tradition's books in their own order.</summary>
+    public IReadOnlyList<CheckItem> Books { get; } = [.. books];
+    public bool HasBooks => Books.Count > 1;
+}
+
 /// <summary>Actions the settings window needs from the running app.</summary>
 public interface ISettingsHost
 {
     VaultSession Session { get; }
     string VaultFolder { get; }
-    IReadOnlyList<string> AvailableBooks { get; }
+    /// <summary>Built-in verse traditions with their scriptures and books (FR-INSP-20).</summary>
+    IReadOnlyList<VerseTradition> VerseTraditions { get; }
     /// <summary>Built-in quote categories with their traditions (FR-INSP-17).</summary>
     IReadOnlyList<QuoteCategory> QuoteCategories { get; }
     int ImportedVerseCount { get; }
@@ -73,7 +89,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _importedVersesText = "";
     [ObservableProperty] private string _importedQuotesText = "";
 
-    public ObservableCollection<CheckItem> Books { get; } = [];
+    /// <summary>One section per verse tradition: Christianity first, then the rest alphabetically (FR-INSP-20).</summary>
+    public ObservableCollection<VerseTraditionSection> VerseSections { get; } = [];
+    /// <summary>The Bible's books (the Christianity section's).</summary>
+    public IReadOnlyList<CheckItem> Books =>
+        VerseSections.FirstOrDefault(s => s.Name == VerseTraditions.Christianity)?.Books ?? [];
     /// <summary>One tick box per quote category, all ticked unless turned off (FR-INSP-17).</summary>
     /// <summary>
     /// One section per quote category: Philosophy first, then the rest alphabetically. Each has its own
@@ -100,7 +120,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         _useImportedVerses = insp.VerseSource == SourceNames.Imported;
         _useImportedQuotes = insp.QuoteSource == SourceNames.Imported;
         _randomPerDay = insp.Mode == SelectionMode.RandomPerDay;
-        foreach (var b in host.AvailableBooks) Books.Add(new CheckItem(b, insp.VerseBooks.Contains(b, StringComparer.OrdinalIgnoreCase)));
+        // Settings from before ISS-012 have no traditions: Christianity only.
+        var ticked = insp.VerseTraditions ?? [VerseTraditions.Christianity];
+        foreach (var t in host.VerseTraditions)
+        {
+            // A Bible book is saved by its name, as before ISS-012; other books as "Tradition/Book".
+            bool Chosen(string book) => t.Name == VerseTraditions.Christianity
+                ? insp.VerseBooks.Contains(book, StringComparer.OrdinalIgnoreCase)
+                : insp.VerseBooks.Contains(TraditionChoice.Make(t.Name, book), StringComparer.OrdinalIgnoreCase);
+            VerseSections.Add(new VerseTraditionSection(t.Name, t.Scriptures,
+                ticked.Contains(t.Name, StringComparer.OrdinalIgnoreCase),
+                t.Books.Select(b => new CheckItem(b, Chosen(b)))));
+        }
         var chosen = insp.Traditions.ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var c in host.QuoteCategories
                      .OrderBy(c => c.Name.Equals(QuoteCategories.Philosophy, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
@@ -137,7 +168,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             ShowQuote = ShowQuote,
             VerseSource = UseImportedVerses ? SourceNames.Imported : SourceNames.BuiltIn,
             QuoteSource = UseImportedQuotes ? SourceNames.Imported : SourceNames.BuiltIn,
-            VerseBooks = Books.Where(b => b.IsChecked).Select(b => b.Name).ToList(),
+            VerseBooks = VerseSections.SelectMany(s => s.Books.Where(b => b.IsChecked)
+                .Select(b => s.Name == VerseTraditions.Christianity ? b.Name : TraditionChoice.Make(s.Name, b.Name))).ToList(),
+            VerseTraditions = VerseSections.Where(s => s.IsIncluded).Select(s => s.Name).ToList(),
             Traditions = CategorySections.SelectMany(c => c.Traditions.Where(t => t.IsChecked).Select(t => TraditionChoice.Make(c.Name, t.Name))).ToList(),
             HiddenCategories = CategorySections.Where(c => !c.IsIncluded).Select(c => c.Name).ToList(),
             Mode = RandomPerDay ? SelectionMode.RandomPerDay : SelectionMode.DayOfYear,

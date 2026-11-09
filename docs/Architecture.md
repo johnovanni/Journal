@@ -26,7 +26,7 @@ A private, single-user desktop journal and planner for Windows. Each calendar da
 | D7 | **File-per-entry vault** (`entries/*.jent`, `blobs/*.jblob`) plus an encrypted **catalog** used for the calendar and search | Small writes per save, works well inside a OneDrive/backup folder, a corrupted file affects one day only. |
 | D8 | **In-memory search index** built from the catalog on unlock | Encrypted data can't be indexed on disk in plaintext. A decade of entries is a few MB of text, so in-memory search is instant. |
 | D9 | **Verse and quote are stored with the entry** once the entry is first saved | Past days keep showing the verse/quote you saw that day, even if you later change the settings. |
-| D10 | **Built-in public-domain content**: verses from the **World English Bible (WEB)**, a modern-English translation, and quotes from classical authors (Marcus Aurelius, Seneca, Epictetus, Confucius, Lao Tzu, Plato, Aristotle, Pascal, etc.) and from world literature (Shakespeare, Tagore, Rumi, Dickinson, Machado de Assis, Olive Schreiner, etc.; ISS-011), plus user-importable lists | WEB reads as modern English and is public domain, so it can ship inside the app and work offline. The NRSV (the text of the *New Oxford Annotated Bible*), NIV and ESV are copyrighted and cannot be bundled; you can bring verses from a translation you own in through the import feature (§8.2). |
+| D10 | **Built-in public-domain content**: verses from the **World English Bible (WEB)**, a modern-English translation, and, if the user ticks them, passages from public-domain translations of other scriptures (Hebrew Bible, Quran, Bhagavad Gita, Dhammapada, Tao Te Ching, Chuang Tzu and Sikh hymns; ISS-012) and passages from atheist and agnostic writers (ISS-029), and quotes from classical authors (Marcus Aurelius, Seneca, Epictetus, Confucius, Lao Tzu, Plato, Aristotle, Pascal, etc.) and from world literature (Shakespeare, Tagore, Rumi, Dickinson, Machado de Assis, Olive Schreiner, etc.; ISS-011) and science (Darwin, Faraday, Poincaré, Laplace, Leonardo, etc.; ISS-012) and humanism (Erasmus, Paine, Wollstonecraft, Mill, Russell, etc.; ISS-028), plus user-importable lists | WEB reads as modern English and is public domain, so it can ship inside the app and work offline. The NRSV (the text of the *New Oxford Annotated Bible*), NIV and ESV are copyrighted and cannot be bundled; you can bring verses from a translation you own in through the import feature (§8.2). |
 | D11 | **Any date can have an entry, including future dates** | The journal doubles as a planner: write plans and checklists on a future day, then tick them off. |
 
 ## 3. Architecture overview
@@ -103,7 +103,7 @@ Journal/
 ├───────────────────────────┬──────────────────────────────────────────────────────┤
 │   <   October 2026    >   │ Thursday, October 15, 2026      :(  :|  :)    [del]  │
 │   Su Mo Tu We Th Fr Sa    │ ┌──────────────────────────────────────────────────┐ │
-│                1  2  3    │ │ VERSE                    LITERATURE              │ │
+│                1  2  3    │ │ BIBLE                    LITERATURE              │ │
 │    4 [5] 6  7 [8] 9 10    │ │ Trust in Yahweh with...  All the world's a...    │ │
 │   11 12 [13]14 (15)16 17  │ │ Proverbs 3:5 WEB  Copy   Shakespeare  Copy       │ │
 │   18 19 20 21 22 23 24    │ └──────────────────────────────────────────────────┘ │
@@ -192,6 +192,10 @@ classDiagram
         +string Reference
         +string Text
         +string Translation
+        +string Book
+        +string? Tradition
+        +string? Scripture
+        +string CardLabel()
     }
     class Quote {
         <<value object>>
@@ -710,6 +714,7 @@ classDiagram
         +InspirationResult For(DateOnly date, InspirationSettings s, Guid vaultId)
         +DailyInspiration Shuffle(DailyInspiration current, InspirationSettings s)
         +IReadOnlyList~string~ AvailableBooks()
+        +IReadOnlyList~VerseTradition~ AvailableVerseTraditions()
         +IReadOnlyList~QuoteCategory~ AvailableCategories()
     }
     class IVerseSource {
@@ -737,6 +742,7 @@ classDiagram
         +bool ShowQuote
         +string VerseSource
         +IReadOnlySet~string~ VerseBooks
+        +IReadOnlySet~string~ VerseTraditions
         +string QuoteSource
         +IReadOnlySet~string~ Traditions
         +IReadOnlySet~string~ HiddenCategories
@@ -784,21 +790,24 @@ Each day up to today can be marked sad, neutral or happy with three faces next t
 
 ### 8.2 Daily verse and quote options
 
-The quote card's label is the quote's category in capitals ("PHILOSOPHY", "LITERATURE"). Categories are data: each quote in `quotes.json` names its category, and the label, Settings and filters are built from the categories present (FR-INSP-17). The settings store the categories turned *off*, so a category added to the content later is shown until the user turns it off. Philosophy and literature quotes alternate in `quotes.json`, so the day-of-year mode, which only reaches the first 366 quotes, shows both.
+The verse card's label is the passage's scripture in capitals ("BIBLE", "QURAN", "TAO TE CHING"; FR-INSP-19). Each built-in passage in `verses.json` records its tradition, scripture, book and translation; a row without a tradition is a World English Bible verse, and a day saved before ISS-012 shows "BIBLE". Settings has a section per tradition, Christianity first, and only Christianity is ticked until the user ticks others. With several ticked, the day first picks a tradition evenly and then a passage within it, so the Bible's 477 verses don't crowd out the rest; by day of year the days cycle through the ticked traditions (FR-INSP-20). With only Christianity ticked the choice is exactly what it was before. Book choices are saved as "Tradition/Book", since the Bible and the Hebrew Bible share book names; a plain book name, as saved before ISS-012, is a Bible book.
+
+The quote card's label is the quote's category in capitals ("PHILOSOPHY", "LITERATURE"). Categories are data: each quote in `quotes.json` names its category, and the label, Settings and filters are built from the categories present (FR-INSP-17). The settings store the categories turned *off*, so a category added to the content later is shown until the user turns it off. Philosophy and literature quotes alternate in `quotes.json`, and a science quote and a humanism quote follow every two others, so the day-of-year mode, which only reaches the first 366 quotes, shows all four.
 
 | Setting | Options | Default |
 |---|---|---|
-| Show Bible verse | on / off | on |
-| Verse source | Built-in World English Bible (≥ 366 verses) · imported list | Built-in WEB |
-| Verse books filter | any subset of books, listed in Bible order down columns | all |
+| Show a verse | on / off | on |
+| Verse source | Built-in scriptures · imported list | Built-in |
+| Verse traditions | one section per tradition, Christianity first: Christianity (World English Bible, 477 verses), Atheism (writers from Lucretius to Chapman Cohen, labelled ATHEISM), Buddhism (Dhammapada), Hinduism (Bhagavad Gita), Islam (Quran), Judaism (Hebrew Bible, JPS 1917), Sikhism (Japji, Asa ki War, Sohila), Taoism (Tao Te Ching, Chuang Tzu), each with an *Include* tick box | Christianity only |
+| Verse books filter | per tradition with more than one book, in the scripture's order down columns. Saved as "Tradition/Book" (a Bible book by its plain name); a tradition with none ticked keeps all its passages | all |
 | Show a quote | on / off | on |
-| Quote source | Built-in quotes (394 philosophy, 395 literature) · imported list | Built-in |
-| Quote categories | one section per category in the content, Philosophy first (Philosophy, Literature; a future category such as Science appears with no code change), each with an *Include* tick box | all ticked |
+| Quote source | Built-in quotes (394 philosophy, 395 literature, 187 science, 201 humanism) · imported list | Built-in |
+| Quote categories | one section per category in the content, Philosophy first (Philosophy, Humanism, Literature, Science; a category added to the content appears with no code change), each with an *Include* tick box | all ticked |
 | Traditions filter | per category: Stoic, Greek, Chinese, … for philosophy; English, Persian, Chinese, Latin American, African, … for literature. Saved as "Category/Tradition"; a category with none ticked keeps all its quotes. Listed alphabetically down columns | all |
 | Selection | Same each year by day-of-year · Random per day (stable for that date) | Day-of-year |
 | Per-day | **Shuffle** button for a new verse/quote today; it is saved with the entry | |
 
-Import format: a JSON or CSV file (`reference,text,translation` for verses; `text,author,work,tradition,category` for quotes; a quote without a category is labelled "Quote"). Use this to bring in verses from a copyrighted translation you own, such as the NRSV from the *New Oxford Annotated Bible*. Imported lists are stored inside the encrypted vault.
+Import format: a JSON or CSV file (`reference,text,translation` and optionally `scripture`, which becomes the card label, for verses; `text,author,work,tradition,category` for quotes; a quote without a category is labelled "Quote"). Use this to bring in verses from a copyrighted translation you own, such as the NRSV from the *New Oxford Annotated Bible*. Imported lists are stored inside the encrypted vault.
 
 ## 9. Presentation layer
 

@@ -177,7 +177,11 @@ public sealed class FakeSettingsHost(VaultSession session) : ISettingsHost
     public AppSettings? Applied { get; private set; }
     public VaultSession Session => session;
     public string VaultFolder => @"C:\vault";
+    /// <summary>The Bible's books, used for the Christianity section unless <see cref="Traditions"/> is set.</summary>
     public IReadOnlyList<string> AvailableBooks { get; init; } = ["Psalms", "Proverbs"];
+    public IReadOnlyList<Journal.Core.Inspiration.VerseTradition>? Traditions { get; init; }
+    public IReadOnlyList<Journal.Core.Inspiration.VerseTradition> VerseTraditions =>
+        Traditions ?? [new("Christianity", ["Bible"], AvailableBooks)];
     public IReadOnlyList<Journal.Core.Inspiration.QuoteCategory> QuoteCategories { get; init; } =
         [new("Literature", ["English", "Persian"]), new("Philosophy", ["Greek", "Stoic"])];
     public int ImportedVerseCount => 0;

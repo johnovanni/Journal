@@ -5,19 +5,27 @@ using Journal.Core.Persistence;
 
 namespace Journal.Infrastructure.Content;
 
-/// <summary>Built-in World English Bible verses (public domain), embedded in the assembly (D10).</summary>
+/// <summary>
+/// Built-in passages from public-domain translations of the scriptures, embedded in the assembly (D10, FR-INSP-18).
+/// A row without a tradition is a World English Bible verse.
+/// </summary>
 public sealed class EmbeddedVerseSource : IVerseSource
 {
     private readonly Lazy<IReadOnlyList<Verse>> _verses = new(() =>
         EmbeddedJson.Load<VerseFile>("Journal.Content.verses.json").Verses
-            .Select(v => new Verse(v.Reference, v.Text, v.Translation) { Book = v.Book ?? Verse.BookOf(v.Reference) }).ToList());
+            .Select(v => new Verse(v.Reference, v.Text, v.Translation)
+            {
+                Book = v.Book ?? Verse.BookOf(v.Reference),
+                Tradition = v.Tradition ?? VerseTraditions.Christianity,
+                Scripture = v.Scripture ?? VerseTraditions.Bible,
+            }).ToList());
 
     public string Name => SourceNames.BuiltIn;
-    public string Description => "World English Bible (public domain)";
+    public string Description => "Translations of the scriptures in the public domain";
     public IReadOnlyList<Verse> All() => _verses.Value;
 
     private sealed record VerseFile(int FormatVersion, string Source, List<VerseRow> Verses);
-    private sealed record VerseRow(string Reference, string? Book, string Text, string Translation);
+    private sealed record VerseRow(string Reference, string? Book, string Text, string Translation, string? Tradition, string? Scripture);
 }
 
 /// <summary>Built-in philosophy and literature quotes from public-domain editions (D10, FR-INSP-16, FR-INSP-17).</summary>

@@ -17,6 +17,8 @@ public sealed partial class InspirationViewModel(IClipboardService? clipboard = 
 
     [ObservableProperty] private string _verseText = "";
     [ObservableProperty] private string _verseReference = "";
+    /// <summary>Card label: the passage's scripture, e.g. BIBLE or QURAN (FR-INSP-19).</summary>
+    [ObservableProperty] private string _verseLabel = "VERSE";
     [ObservableProperty] private string _quoteText = "";
     [ObservableProperty] private string _quoteAuthor = "";
     /// <summary>Card label: the quote's category, e.g. PHILOSOPHY or LITERATURE (FR-INSP-17).</summary>
@@ -34,6 +36,7 @@ public sealed partial class InspirationViewModel(IClipboardService? clipboard = 
         _current = inspiration;
         HasVerse = inspiration.Verse is not null;
         VerseText = inspiration.Verse?.Text ?? "";
+        VerseLabel = inspiration.Verse?.CardLabel() ?? "VERSE";
         VerseReference = inspiration.Verse is { } v
             ? (string.IsNullOrEmpty(v.Translation) ? v.Reference : $"{v.Reference} · {v.Translation}")
             : "";

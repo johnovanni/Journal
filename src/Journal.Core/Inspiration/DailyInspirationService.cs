@@ -16,8 +16,20 @@ public sealed class DailyInspirationService
         _quoteSources = quoteSources.ToDictionary(s => s.Name);
     }
 
+    /// <summary>The Bible's books, in order.</summary>
     public IReadOnlyList<string> AvailableBooks() =>
-        Verses(SourceNames.BuiltIn).Select(v => v.Book).Distinct().ToList();
+        Verses(SourceNames.BuiltIn).Where(v => v.TraditionName() == VerseTraditions.Christianity).Select(v => v.Book).Distinct().ToList();
+
+    /// <summary>The built-in traditions, Christianity first and then alphabetically, each with its books (FR-INSP-20).</summary>
+    public IReadOnlyList<VerseTradition> AvailableVerseTraditions() =>
+        Verses(SourceNames.BuiltIn)
+            .GroupBy(v => v.TraditionName(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new VerseTradition(g.Key,
+                g.Select(v => v.Scripture ?? VerseTraditions.Bible).Distinct().ToList(),
+                g.Select(v => v.Book).Distinct().ToList()))
+            .OrderBy(t => t.Name.Equals(VerseTraditions.Christianity, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     public IReadOnlyList<string> AvailableTraditions() =>
         Quotes(SourceNames.BuiltIn).Select(q => q.Tradition).Distinct().Order().ToList();
@@ -37,11 +49,7 @@ public sealed class DailyInspirationService
         Verse? verse = null;
         Quote? quote = null;
         if (s.ShowVerse)
-        {
-            var list = FilteredVerses(s, warnings);
-            var i = strategy.SelectIndex(list.Count, date, vaultId, "verse");
-            verse = i >= 0 ? list[i] : null;
-        }
+            verse = ChooseVerse(ByTradition(FilteredVerses(s, warnings)), s.Mode, strategy, date, vaultId);
         if (s.ShowQuote)
         {
             var list = FilteredQuotes(s, warnings);
@@ -60,8 +68,18 @@ public sealed class DailyInspirationService
         Quote? quote = null;
         if (s.ShowVerse)
         {
-            var list = FilteredVerses(s, warnings);
-            verse = PickOther(list, current.Verse, random);
+            // Pick a tradition evenly, then a passage, so a long scripture doesn't crowd out the others.
+            var groups = ByTradition(FilteredVerses(s, warnings));
+            if (groups.Count == 1) verse = PickOther(groups[0], current.Verse, random);
+            else if (groups.Count > 1)
+            {
+                do
+                {
+                    var group = groups[random.Next(groups.Count)];
+                    verse = group[random.Next(group.Count)];
+                }
+                while (Equals(verse, current.Verse));
+            }
         }
         if (s.ShowQuote)
         {
@@ -120,6 +138,37 @@ public sealed class DailyInspirationService
         return pick;
     }
 
+    /// <summary>
+    /// The day's verse (FR-INSP-20): with one tradition, exactly as before ISS-012. With several, a tradition is
+    /// chosen evenly first, then a passage within it. By day of year, the days cycle through the traditions and
+    /// each tradition's passages in turn, so the same date still gets the same verse every year.
+    /// </summary>
+    private static Verse? ChooseVerse(IReadOnlyList<IReadOnlyList<Verse>> groups, SelectionMode mode, ISelectionStrategy strategy, DateOnly date, Guid vaultId)
+    {
+        if (groups.Count == 0) return null;
+        if (groups.Count == 1)
+        {
+            var i = strategy.SelectIndex(groups[0].Count, date, vaultId, "verse");
+            return i >= 0 ? groups[0][i] : null;
+        }
+        if (mode == SelectionMode.DayOfYear)
+        {
+            var day = date.DayOfYear - 1;
+            var g = groups[day % groups.Count];
+            return g[day / groups.Count % g.Count];
+        }
+        var group = groups[strategy.SelectIndex(groups.Count, date, vaultId, "verse-tradition")];
+        return group[strategy.SelectIndex(group.Count, date, vaultId, "verse")];
+    }
+
+    /// <summary>The verses grouped by tradition, Christianity first and then alphabetically.</summary>
+    private static IReadOnlyList<IReadOnlyList<Verse>> ByTradition(IReadOnlyList<Verse> verses) =>
+        verses.GroupBy(v => v.TraditionName(), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key.Equals(VerseTraditions.Christianity, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (IReadOnlyList<Verse>)g.ToList())
+            .ToList();
+
     private IReadOnlyList<Verse> FilteredVerses(InspirationSettings s, List<string> warnings)
     {
         var all = Verses(s.VerseSource);
@@ -128,11 +177,38 @@ public sealed class DailyInspirationService
             warnings.Add("The imported verse list is empty, so the built-in verses are used.");
             all = Verses(SourceNames.BuiltIn);
         }
+        else if (s.VerseSource == SourceNames.BuiltIn)
+        {
+            var shown = all.Where(v => s.VerseTraditions.Contains(v.TraditionName(), StringComparer.OrdinalIgnoreCase)).ToList();
+            if (shown.Count > 0) all = shown;
+            else warnings.Add("No verse traditions are ticked, so all verses are used.");
+        }
         if (s.VerseBooks.Count == 0) return all;
-        var filtered = all.Where(v => s.VerseBooks.Contains(v.Book, StringComparer.OrdinalIgnoreCase)).ToList();
+        var filtered = FilterByBook(all, s.VerseBooks);
         if (filtered.Count > 0) return filtered;
         warnings.Add("No verses match the chosen books, so all verses are used.");
         return all;
+    }
+
+    /// <summary>
+    /// Applies the book choices per tradition (FR-INSP-20): a tradition with no ticked book keeps all its verses.
+    /// Choices are "Tradition/Book"; a plain book name (as saved before ISS-012) is a Bible book, and also
+    /// applies to imported verses, which have no tradition.
+    /// </summary>
+    private static List<Verse> FilterByBook(IReadOnlyList<Verse> all, IReadOnlySet<string> choices)
+    {
+        var ticked = new HashSet<(string, string)>(StringTupleComparer.Instance);
+        foreach (var c in choices)
+        {
+            if (TraditionChoice.TryParse(c, out var tradition, out var book)) ticked.Add((tradition, book));
+            else
+            {
+                ticked.Add((VerseTraditions.Christianity, c));
+                ticked.Add(("", c));
+            }
+        }
+        var filteredTraditions = ticked.Select(t => t.Item1).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return all.Where(v => !filteredTraditions.Contains(v.TraditionName()) || ticked.Contains((v.TraditionName(), v.Book))).ToList();
     }
 
     private IReadOnlyList<Quote> FilteredQuotes(InspirationSettings s, List<string> warnings)

@@ -28,6 +28,8 @@ public sealed class InspirationOptions
     public bool ShowQuote { get; set; } = true;
     public string VerseSource { get; set; } = SourceNames.BuiltIn;
     public List<string> VerseBooks { get; set; } = [];
+    /// <summary>Traditions the verse comes from; missing (settings from before ISS-012) means Christianity only.</summary>
+    public List<string>? VerseTraditions { get; set; }
     public string QuoteSource { get; set; } = SourceNames.BuiltIn;
     public List<string> Traditions { get; set; } = [];
     /// <summary>Quote categories turned off; empty means all are shown (FR-INSP-17).</summary>
@@ -40,6 +42,7 @@ public sealed class InspirationOptions
         ShowQuote = ShowQuote,
         VerseSource = VerseSource,
         VerseBooks = VerseBooks.ToHashSet(StringComparer.OrdinalIgnoreCase),
+        VerseTraditions = (VerseTraditions ?? [Domain.VerseTraditions.Christianity]).ToHashSet(StringComparer.OrdinalIgnoreCase),
         QuoteSource = QuoteSource,
         Traditions = Traditions.ToHashSet(StringComparer.OrdinalIgnoreCase),
         HiddenCategories = HiddenCategories.ToHashSet(StringComparer.OrdinalIgnoreCase),

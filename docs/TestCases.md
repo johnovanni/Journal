@@ -179,10 +179,15 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
-| TC-INSP-01 | FR-INSP-01, FR-INSP-02, FR-INSP-17 | A | Open Oct 15 with defaults. Show a philosophy quote, a literature quote and a quote whose category is "Science". | Verse text, reference and "WEB" shown; quote text and author shown. The card label reads "PHILOSOPHY", "LITERATURE" and "SCIENCE" respectively. |
-| TC-INSP-02 | FR-INSP-03 | I | Load embedded verse list. | ≥ 366 items; all distinct references; all `Translation = "WEB"`; no empty text; references parse as Book Chapter:Verse(-Verse). |
+| TC-INSP-01 | FR-INSP-01, FR-INSP-02, FR-INSP-17 | A | Open Oct 15 with defaults. Show a philosophy quote, a literature quote and a quote whose category is "Science". | Verse text, reference and "WEB" shown under the label "BIBLE"; quote text and author shown. The card label reads "PHILOSOPHY", "LITERATURE" and "SCIENCE" respectively. |
+| TC-INSP-02 | FR-INSP-03 | I | Load embedded verse list and take the Christianity verses. | ≥ 366 items; all distinct references; all `Translation = "WEB"`; no empty text; references parse as Book Chapter:Verse(-Verse). |
 | TC-INSP-03 | FR-INSP-04 | I | Load embedded quote list. | ≥ 366 distinct texts; ≥ 20 distinct authors; every item has a tradition. |
-| TC-INSP-16 | FR-INSP-16 | I | Load embedded quote list and take the Literature quotes. | Categories are exactly Literature and Philosophy; 394 philosophy quotes; ≥ 366 distinct literature texts, none also a philosophy quote; ≥ 30 authors; ≥ 8 traditions including "Latin American" and "African"; every literature quote has a work; both categories appear among the first 366 quotes (used by day-of-year mode). |
+| TC-INSP-16 | FR-INSP-16 | I | Load embedded quote list and take the Literature quotes. | Categories are exactly Humanism, Literature, Philosophy and Science; 394 philosophy quotes; ≥ 366 distinct literature texts, none also a philosophy quote; ≥ 30 authors; ≥ 8 traditions including "Latin American" and "African"; every literature quote has a work; all four categories appear among the first 366 quotes (used by day-of-year mode). |
+| TC-INSP-17 | FR-INSP-18, FR-INSP-19 | I | Load embedded verse list. | The Christianity verses are the World English Bible list as before. Each of Judaism, Islam, Hinduism, Buddhism, Taoism, Sikhism and Atheism has ≥ 60 distinct passages; Atheism has ≥ 100 from ≥ 12 writers, each with "Writer, Work" as reference and book and the label "ATHEISM"; its scriptures are exactly those listed (Taoism: Tao Te Ching and Chuang Tzu); each passage has the expected translation, a reference and a book, starts and ends a sentence, and holds no footnote marks, digits or scanning debris; no passage repeats another tradition's. |
+| TC-INSP-18 | FR-INSP-19 | U | Label passages from the Quran and the Tao Te Ching; a verse stored before ISS-012 (no tradition or scripture); an imported verse with and without a scripture; show a Quran passage and then a stored Bible verse on the card. | "QURAN", "TAO TE CHING"; "BIBLE" (and counted as Christianity); "VERSE" and the named scripture. A new passage keeps its tradition and scripture when saved and read back; an old one writes neither. The card shows "QURAN" with "Quran 2:255 · Pickthall", then "BIBLE". |
+| TC-INSP-19 | FR-INSP-06, FR-INSP-20 | U/A | With the Bible plus Quran and Taoist passages: compare 400 days with default settings against the Bible alone, by day of year and at random. Tick three traditions: 300 days by day of year, 900 days at random, 200 shuffles. Tick "Psalms" and "Taoism/Chuang Tzu". Tick no tradition; use imported verses with Islam ticked. Load settings saved before ISS-012. In Settings: check sections and defaults, tick Taoism and one of its books, save and reopen; open the real window. | Default days are identical to before. By day of year the traditions take turns and every passage of each comes round, and the same date next year gives the same passage; at random each tradition gets about a third (230–370 of 900); shuffle reaches all three and never repeats the current passage. Book choices apply per tradition and a tradition with none ticked keeps all its books. No tradition: all verses with a warning; imported verses ignore the traditions. Old settings mean Christianity only. Settings list Christianity, Islam, Taoism in that order with only Christianity ticked, no book list for a single book, and save "Taoism/Chuang Tzu" beside the plain "Psalms". |
+| TC-INSP-20 | FR-INSP-21 | I | Load embedded quote list and take the Science quotes. | ≥ 180 distinct texts, none also another category's; ≥ 20 scientists; every quote has a work, a source edition and a field from the known list, and is a complete sentence; 80–110 of the first 366 quotes are science. |
+| TC-INSP-21 | FR-INSP-22 | I | Load embedded quote list and take the Humanism quotes. | ≥ 180 distinct texts, none also another category's; ≥ 15 writers, none of them in another quote category; periods exactly Classical, Enlightenment, Freethought and Renaissance; every quote has a work and a source edition and is a complete sentence; 80–110 of the first 366 quotes are humanism. |
 | TC-INSP-04 | FR-INSP-05 | A | Turn verse off; turn quote off. | Verse panel hidden; then quote panel hidden; layout has no empty gap. |
 | TC-INSP-05 | FR-INSP-06, FR-INSP-17 | U/A | Filter verses to Psalms; quotes to Stoic. Filter to a book with no items. Turn off Literature, then Philosophy, then both. Add a "Science" quote to the content only. Load a stored quote saved without a category. In Settings, untick a category, tick traditions, save and reopen; open settings saved with a bare tradition. Tick Chinese under Philosophy only. Open the real Settings window. | Every selected verse from Psalms; every quote Stoic. Empty filter: falls back to full list and returns a warning. Category filters give only the ticked category; all off falls back with a warning; with defaults both categories appear. Science is listed with its tradition and can be shown with no code change. The stored quote reads as Philosophy. Settings show one section per category, Philosophy first, each with its own traditions alphabetically and every category ticked; choices save as "Category/Tradition" and reopen that way; a bare tradition from older settings shows ticked in each category that has it. With Philosophy › Chinese ticked, the only philosophy quotes are Chinese, and all literature quotes, Chinese or not, still appear. In the real window, Philosophy's section is above Literature's, the tradition lists run down columns alphabetically, the books run down columns in Bible order, and no tick box is cut off. |
 | TC-INSP-06 | FR-INSP-07 | U | Day-of-year mode for 2026-10-15 and 2027-10-15. Random mode for same dates and two vault ids. | Day-of-year: same item both years. Random: different between years in this sample; differs between vault ids; stable on repeat. |
@@ -255,7 +260,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 ## 3. Traceability matrix
 
-148 requirements, 165 test cases. Every requirement is covered by at least one test.
+153 requirements, 170 test cases. Every requirement is covered by at least one test.
 
 | Requirement | Pri | Test cases |
 |---|---|---|
@@ -359,7 +364,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-INSP-03 | M | TC-INSP-02 (I) |
 | FR-INSP-04 | M | TC-INSP-03 (I) |
 | FR-INSP-05 | M | TC-INSP-04 (A) |
-| FR-INSP-06 | S | TC-INSP-05 (U/A) |
+| FR-INSP-06 | S | TC-INSP-19 (U/A), TC-INSP-05 (U/A) |
 | FR-INSP-07 | M | TC-INSP-06 (U) |
 | FR-INSP-08 | M | TC-INSP-07 (U) |
 | FR-INSP-09 | S | TC-INSP-08 (U) |
@@ -370,6 +375,11 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-INSP-15 | M | TC-INSP-15 (A) |
 | FR-INSP-14 | M | TC-INSP-14 (A) |
 | FR-INSP-16 | M | TC-INSP-16 (I) |
+| FR-INSP-18 | M | TC-INSP-17 (I) |
+| FR-INSP-19 | M | TC-INSP-17 (I), TC-INSP-18 (U) |
+| FR-INSP-20 | M | TC-INSP-19 (U/A) |
+| FR-INSP-21 | S | TC-INSP-20 (I) |
+| FR-INSP-22 | S | TC-INSP-21 (I) |
 | FR-INSP-17 | M | TC-INSP-01 (A), TC-INSP-05 (U/A) |
 | FR-SET-01 | M | TC-SET-01 (A) |
 | FR-SET-02 | M | TC-SET-02 (I) |

@@ -35,21 +35,24 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Closed |
 | ISS-010 | Copy and paste drops checkboxes, images, attached files and headings | Bug | High | FR-EDT-01; FR-EDT-06, FR-EDT-08, FR-IMG-04, FR-ATT-02; new FR-EDT-13 | TC-EDT-01 (manual, text only); gap → TC-EDT-17 (new) | Closed |
 | ISS-011 | Add quotes from great literature (Shakespeare and world authors) | Change | Low | FR-INSP-02, FR-INSP-04, FR-INSP-06 (changed); FR-INSP-16, FR-INSP-17 (new) | TC-INSP-01, TC-INSP-05, TC-INSP-10 (changed); TC-INSP-16 (new) | Closed |
-| ISS-012 | Add world-religion texts to the verse and Science as a quote category (future) | Change | Low | FR-INSP-01, FR-INSP-03 (change); new requirements to be written | New tests to be written | Open |
+| ISS-012 | Add world-religion texts to the verse and Science as a quote category | Change | Low | FR-INSP-01, FR-INSP-02, FR-INSP-06 (change); new FR-INSP-18 to FR-INSP-21 | TC-INSP-01, TC-INSP-05, TC-INSP-16 (change); new TC-INSP-17 to TC-INSP-20 | Verified |
 | ISS-013 | Mark each day sad, neutral or happy; tint the calendar and count moods | Change | Medium | FR-CAL-03 (change); new FR-MOOD-01…05 | TC-CAL-03 (change); new TC-MOOD-01…06 | Closed |
 | ISS-014 | A ticked checklist item's strikethrough also runs through its checkbox | Bug | Low | FR-EDT-09 | TC-EDT-11 (extended) | Closed |
 | ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Closed |
 | ISS-016 | Closing the window doesn't exit; the app keeps running in the background | Bug | High | FR-ENT-05, FR-ATT-06, FR-SEC-19; new FR-SEC-21 | None (gap: no test closes the real main window); new TC-SEC-26 | Closed |
-| ISS-017 | Show the app's version number | Change | Low | New FR-UI-02 | New TC-UI-03 | Fixed |
-| ISS-018 | Refactor: split AppController so startup, locking and exiting can be tested | Refactor | Medium | None (behaviour unchanged); protects FR-SEC-13…21, FR-ENT-05 | New tests for locking, auto-lock and exit; all existing tests must still pass | Fixed |
-| ISS-019 | Refactor: replace the editor's global static events and image loader with per-editor wiring | Refactor | Low | None (behaviour unchanged); protects FR-IMG-*, FR-ATT-* | TC-IMG-*, TC-ATT-* still pass; new test with two editors | Fixed |
-| ISS-020 | Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor | Refactor | Low | None (behaviour unchanged); protects FR-EDT-11 | TC-EDT-13 and the mapper tests still pass | Fixed |
-| ISS-021 | Refactor: turn the static EditorOperations into an editor-document object | Refactor | Low | None (behaviour unchanged); protects FR-EDT-*, FR-IMG-03 | Editor tests still pass | Fixed |
-| ISS-022 | Housekeeping: shared test fake for Settings, remove an unused package, split crowded files | Refactor | Low | None | All tests still pass | Fixed |
-| ISS-023 | Windows Hello dialog opens behind the "Journal is locked" window | Bug | Medium | FR-SEC-20 (a Windows Hello request the user can't see); FR-SEC-08 | None failed (gap: no test checks that the dialog is in front); new TC-SEC-27 | Fixed |
-| ISS-024 | The app freezes when the PC goes to sleep with unsaved text | Bug | High | FR-SEC-14, FR-SEC-16, FR-ENT-05 | TC-SEC-14 passed (gap: it has nothing to save); new TC-SEC-28 | Fixed |
-| ISS-025 | Three test cases marked automated have no complete test | Test gap | Medium | NFR-SEC-07, NFR-PERF-02 (not verified); FR-TAB-07 (partly verified) | TC-NFR-09, TC-NFR-14, TC-TAB-07 | Fixed |
+| ISS-017 | Show the app's version number | Change | Low | New FR-UI-02 | New TC-UI-03 | Closed |
+| ISS-018 | Refactor: split AppController so startup, locking and exiting can be tested | Refactor | Medium | None (behaviour unchanged); protects FR-SEC-13…21, FR-ENT-05 | New tests for locking, auto-lock and exit; all existing tests must still pass | Closed |
+| ISS-019 | Refactor: replace the editor's global static events and image loader with per-editor wiring | Refactor | Low | None (behaviour unchanged); protects FR-IMG-*, FR-ATT-* | TC-IMG-*, TC-ATT-* still pass; new test with two editors | Closed |
+| ISS-020 | Refactor: let document blocks answer for themselves instead of type checks; remove or use the unused visitor | Refactor | Low | None (behaviour unchanged); protects FR-EDT-11 | TC-EDT-13 and the mapper tests still pass | Closed |
+| ISS-021 | Refactor: turn the static EditorOperations into an editor-document object | Refactor | Low | None (behaviour unchanged); protects FR-EDT-*, FR-IMG-03 | Editor tests still pass | Closed |
+| ISS-022 | Housekeeping: shared test fake for Settings, remove an unused package, split crowded files | Refactor | Low | None | All tests still pass | Closed |
+| ISS-023 | Windows Hello dialog opens behind the "Journal is locked" window | Bug | Medium | FR-SEC-20 (a Windows Hello request the user can't see); FR-SEC-08 | None failed (gap: no test checks that the dialog is in front); new TC-SEC-27 | Closed |
+| ISS-024 | The app freezes when the PC goes to sleep with unsaved text | Bug | High | FR-SEC-14, FR-SEC-16, FR-ENT-05 | TC-SEC-14 passed (gap: it has nothing to save); new TC-SEC-28 | Closed |
+| ISS-025 | Three test cases marked automated have no complete test | Test gap | Medium | NFR-SEC-07, NFR-PERF-02 (not verified); FR-TAB-07 (partly verified) | TC-NFR-09, TC-NFR-14, TC-TAB-07 | Closed |
 | ISS-026 | Viewing a day re-saves it, and switching days is slower than required | Bug | Medium | NFR-PERF-02 | TC-NFR-14 (fails when run) | Open |
+| ISS-027 | Some built-in verse passages are very long | Change | Low | FR-INSP-15 (shown in a scrolling card); FR-INSP-18 (no length limit) | TC-INSP-17 (no length check) | Deferred |
+| ISS-028 | Add Humanism as a quote category | Change | Low | FR-INSP-02, FR-INSP-17 (content only); new requirement to be agreed | New content test to be agreed | Verified |
+| ISS-029 | Add Atheism as a verse tradition | Change | Low | FR-INSP-18 (the traditions listed) | TC-INSP-17 (the traditions listed) | Verified |
 
 ---
 
@@ -539,7 +542,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 
 ---
 
-## ISS-012: Add world-religion texts to the verse and Science as a quote category (future)
+## ISS-012: Add world-religion texts to the verse and Science as a quote category
 
 | | |
 |---|---|
@@ -547,8 +550,9 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Type / Severity** | Change / Low |
 | **Area** | Daily verse and quote (built-in content, settings) |
 | **Failing requirements** | None (new capability). |
-| **Requirements to change** | FR-INSP-01 and FR-INSP-03 (the verse card is a Bible verse from the World English Bible today); new requirements for religion sources and a Science category, to be written when this is taken up. |
-| **Status** | Open. The owner asked for this as a separate request **for the future**; no analysis or work until the owner says to take it up. |
+| **Requirements to change** | FR-INSP-01 (a passage from a scripture, not only a Bible verse), FR-INSP-02 (Science is a quote category too), FR-INSP-06 (verses filtered by tradition and book). New FR-INSP-18 to FR-INSP-21. |
+| **Tests to change** | TC-INSP-01, TC-INSP-05, TC-INSP-16, TC-NFR-09 (one new setting name). New TC-INSP-17 to TC-INSP-20. |
+| **Status** | Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the choices below. |
 
 **Description.** The owner would like:
 1. **World religions under the VERSE card:** passages from other religions' scriptures, as options alongside the Bible.
@@ -557,6 +561,79 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 **Notes for when it is taken up.**
 - **Science:** ISS-011 makes quote categories data-driven, so a Science category would be mostly content work. Public-domain candidates include Newton, Galileo, Kepler, Darwin, Faraday, Pasteur, Ada Lovelace, Maxwell, Poincaré, Ramón y Cajal, and Einstein's *Relativity* (1920 translation). Many modern scientists' writings are still under copyright.
 - **Religions:** the verse card and its settings assume one Bible translation (reference, book filter, WEB label). Supporting several scriptures needs the verse source, label and book filter to work per tradition, similar to quote categories. Public-domain English translations exist for, for example, the Quran (Rodwell 1861, Palmer 1880, Pickthall 1930), the Bhagavad Gita (Edwin Arnold 1885), the Hebrew Bible (JPS 1917), the Dhammapada (Müller 1881) and Sikh scripture (Macauliffe 1909). Which traditions to include, and how they appear on the card, are the owner's choice.
+
+**Owner's choices (2026-11-08).**
+- **Traditions:** Judaism (Hebrew Bible), Islam (Quran), Hinduism (Bhagavad Gita), Buddhism (Dhammapada), Taoism (Tao Te Ching and the book of Chuang Tzu) and Sikhism, alongside Christianity (the World English Bible, as today).
+- **Card label:** the scripture's name, e.g. QURAN or BHAGAVAD GITA, as the quote card shows PHILOSOPHY or LITERATURE.
+- **Defaults:** only Christianity is ticked, so nothing changes until the owner ticks other traditions.
+- **Sources:** public-domain English translations downloaded from Project Gutenberg, plus sacred-texts.com for the two not on Gutenberg (JPS 1917 Hebrew Bible; Macauliffe's Sikh translations). Downloads are used only to copy passages word for word; nothing else is shipped.
+
+**Design.**
+1. **Content.** Each built-in passage records its tradition, scripture, book, reference, translation and source edition. Every new tradition has at least 100 distinct complete passages (FR-INSP-13 applies: each starts and ends a sentence).
+
+   | Tradition | Scripture (card label) | Translation | Reference form |
+   |---|---|---|---|
+   | Christianity | Bible | World English Bible (today's list) | John 3:16 |
+   | Judaism | Hebrew Bible | JPS 1917 | Genesis 1:1 |
+   | Islam | Quran | a public-domain Gutenberg translation | Quran 2:255 |
+   | Hinduism | Bhagavad Gita | Edwin Arnold (1885) | Bhagavad Gita 2 (chapter; Arnold's verse translation has no verse numbers) |
+   | Buddhism | Dhammapada | Max Müller (1881) | Dhammapada 1 |
+   | Taoism | Tao Te Ching; Chuang Tzu | James Legge (1891); Herbert Giles (1889) | Tao Te Ching 8; Chuang Tzu 2 (chapter) |
+   | Sikhism | Guru Granth Sahib | Max Arthur Macauliffe (1909) | the hymn's name and stanza, e.g. Japji 1 |
+
+2. **Science quotes.** At least 366 distinct public-domain quotes from at least 20 scientists, each with work and source edition, and the field (Astronomy, Physics, Biology and so on) as its tradition. ISS-011 made categories data-driven, so the Science label, Settings section and filters appear from the content.
+3. **Choosing the day's passage.** The day first picks a tradition evenly among the ticked ones, then a passage within it, so a long list (the Bible) doesn't crowd out the rest. With only Christianity ticked, the choice is exactly what it is today (FR-INSP-08). Shuffle picks from all ticked traditions.
+4. **Settings.** The verse section becomes a section per tradition, Christianity first and then alphabetically, each with a tick box and, where it has more than one book, its book list (the Bible's books as today; Taoism's two books; the Hebrew Bible's books). Book choices are saved as "Tradition/Book", since the Bible and the Hebrew Bible share book names; a plain book name in older settings means a Bible book. One new setting, the ticked traditions; a missing value means Christianity only.
+5. **Saved days.** A day stores its passage as today, now with its scripture. Days saved before this show BIBLE for a World English Bible verse and VERSE for an imported one.
+6. **Imported verses.** Unchanged: an imported list is shown on its own and labeled VERSE, unless its file names a scripture.
+
+**Proposed tests.**
+- **TC-INSP-17 (new):** each new tradition has at least 100 distinct complete passages, each with scripture, book, reference, translation and source edition; Christianity is still the World English Bible list.
+- **TC-INSP-18 (new):** the card label names the scripture; older saved days show BIBLE or VERSE.
+- **TC-INSP-19 (new):** Settings show a section per tradition with only Christianity ticked by default; with one tradition ticked the day's verse is unchanged from before; with several, the day picks evenly among them; "Tradition/Book" choices filter the right books, and old plain book names still mean Bible books.
+- **TC-INSP-20 (new):** at least 366 distinct Science quotes from at least 20 scientists, each with field, work and source edition, and none duplicating another category's quote.
+- **TC-INSP-01, TC-INSP-05, TC-INSP-16, TC-NFR-09:** updated for the new category, filters and setting.
+
+**Fix (2026-11-08).** Built as designed, with these differences, each explained below.
+
+| | Designed | Built |
+|---|---|---|
+| Passages per new tradition | at least 100 | at least 60: Judaism 124, Islam 128, Hinduism 106 (after the owner's review), Buddhism 397, Taoism 118 (Tao Te Ching 81, Chuang Tzu 37), Sikhism 69 |
+| Science quotes | at least 366 | 187, from 23 scientists |
+| Source edition | on each passage | in the file's header and the README; each passage records its translation |
+| Hebrew Bible and Sikh sources | sacred-texts.com | Wikisource and archive.org, approved by the owner on 2026-11-08 |
+
+- **Sources.**
+  - sacred-texts.com put its pages behind a Cloudflare bot check after 27 chapters, which may not be bypassed.
+  - With the owner's approval, the JPS 1917 Hebrew Bible came from Wikisource's API and Macauliffe from the archive.org scan of volume I.
+  - Everything else came from Project Gutenberg: the Quran in Pickthall's translation (1930, in #16955, public domain in the US since 2026) with the standard verse numbers; Arnold's Gita; Müller's Dhammapada; Legge's Tao Te Ching; Giles's Chuang Tzu; 27 science books.
+- **Why fewer passages.**
+  - Macauliffe's volume I gave the Japji (opening, 38 pauris, closing slok), the 24 pauris of the Asa ki War and the 5 hymns of the Sohila: 69 passages. The scan needed 77 hand corrections (misread letters, footnotes run into the hymns), listed with the extraction script.
+  - The Science quotes were chosen by reading about 700 candidate sentences; 187 stand on their own and are the scientist's own words, not an editor's.
+  - So the requirements say at least 60 and at least 180. More can be added later from the same sources.
+- **Content checks.** Every passage starts and ends a sentence. The new content test (TC-INSP-17) found and removed leftovers the extraction missed: Arnold's footnote marks, a gap Arnold marks with dots, a Wikisource footnote after Psalm 150, and two "O"s read as zeros in the scan.
+- **References.** Arnold's Gita has no verse numbers, so its passages give the chapter ("Bhagavad Gita 2"). The Tao Te Ching gives the chapter; the Chuang Tzu gives the chapter, as Giles's book does. The Sikh hymns give the composition and stanza ("Japji 4", "Asa ki War, pauri 7", "Sohila 3").
+- **Day-of-year change for quotes.** That mode only reaches the first 366 quotes, so the Science quotes are spread through the list (one after every two others). As a result, days not yet saved will show a different quote by day of year than before; saved days keep theirs (FR-INSP-10). The verse is unchanged unless the owner ticks more traditions.
+- **Found and fixed before release:** opening Settings with settings saved before ISS-012 crashed (the new setting was missing). The tests caught it.
+- **Tests.**
+  - New: TC-INSP-17 (scripture content), TC-INSP-18 (card label), TC-INSP-19 (choosing the day's verse; Settings sections, saving and the real window), TC-INSP-20 (science content).
+  - Changed: TC-INSP-02 (Bible verses only), TC-INSP-16 (three categories), TC-NFR-09 (one new setting name, `verseTraditions`) and the Settings layout test (the Bible's book list).
+  - Results: Core 77, Infrastructure 43 (1 skipped), App 126 (1 skipped).
+
+**To verify:**
+1. Settings → Verse & quote shows a section per tradition with only Christianity ticked, and the card still shows the same Bible verse.
+2. Tick, say, Islam and Taoism, save, and step through a few days: the label changes (BIBLE, QURAN, TAO TE CHING, CHUANG TZU) and the passages take turns.
+3. A Science quote appears with the label SCIENCE, and Settings has a Science section.
+4. Optionally, read the new passages; a numbered review list can be made, as for the literature quotes.
+
+**Owner's review of the passages (2026-11-08).** The owner read the review page (passages numbered HB, QU, BG, DH, TT, CT, GS and SC, then a number).
+- **BG058 and BG076 fixed.** BG058 was the closing heading of chapter 9 ("HERE ENDS CHAPTER IX. OF THE BHAGAVAD-GITA, Entitled …"), not a passage. BG076 ended with chapter 15's closing heading.
+  - **Cause:** Arnold closes some chapters with "HERE ENDETH" and others with "HERE ENDS"; the extraction only knew the first.
+  - **Also found:** the same fault affected BG031 (end of chapter 5), which the owner hadn't flagged.
+  - **Now:** BG058 is gone; BG031 and BG076 keep their passage without the heading. The Gita has 106 passages.
+  - **Numbering:** Gita numbers after BG057 move down by one (the old BG076 is now BG075). The review page has been republished with the new numbers.
+- **Long passages:** the owner likes them but is unsure about including them; logged as ISS-027 to reconsider later.
+- **Humanism:** a new quote category was requested; logged as ISS-028.
 
 ---
 
@@ -834,7 +911,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | New **FR-UI-02**: the app shows its version number. |
 | **Tests to change** | New **TC-UI-03**. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 
 **Description.** The owner wants the app to show its version number, so it's clear which release is installed (for example 1.1.0 from the qapow.com download).
 
@@ -892,7 +969,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Medium |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Services/AppController.cs` (409 lines) |
 
 **Problem.**
@@ -942,7 +1019,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Controls/BlockControls.cs`, `JournalEditor.xaml.cs`, `AppController.cs` |
 
 **Problem.**
@@ -975,7 +1052,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.Core/Documents/DocumentModel.cs`, `src/Journal.App/Editor/FlowDocumentMapper.cs` |
 
 **Problem.**
@@ -1008,7 +1085,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 | **Area** | `src/Journal.App/Editor/EditorOperations.cs` (368 lines), `JournalClipboard.cs`, `JournalEditor.xaml.cs` |
 
 **Problem.**
@@ -1040,7 +1117,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Reported** | 2026-10-19, from Claude's code review requested by the owner |
 | **Type / Severity** | Refactor / Low |
 | **Failing requirements** | None. A refactoring changes how the code is organised, not what the app does. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 | **Area** | Tests, `Journal.App.csproj`, several source files |
 
 **Problem.**
@@ -1080,7 +1157,7 @@ No rewrite is needed. Five targeted changes would make it easier to change safel
 | **Area** | Unlocking, Windows Hello integration (`Hello/WinRtHello.cs`, `Views/UnlockWindow.xaml`) |
 | **Failing requirements** | FR-SEC-20: the app shall never leave a Windows Hello request waiting that the user can't see. Also affects FR-SEC-08 (unlocking with Windows Hello). |
 | **Failing tests** | None failed. **Test gap:** no test checks that the dialog appears in front. TC-SEC-20 (manual) checks when the prompt appears, not whether it can be seen. TC-SEC-23 uses a fake Windows Hello, so no real dialog appears. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 
 **Description.** After clicking **Unlock with Windows Hello**, the Windows Hello dialog often opens behind the "Journal is locked" window. **Expected:** the dialog is in front and ready to use.
 
@@ -1143,7 +1220,7 @@ Clicking and pressing Enter both show it, so how the unlock is started doesn't a
 | **Area** | Locking on sleep and on Windows shutdown (`LockCoordinator.HandlePowerMode`, `AppController.OnApplicationExit`) |
 | **Failing requirements** | FR-SEC-14 (lock when the PC sleeps), FR-SEC-16 (save before locking), FR-ENT-05 (save on lock). |
 | **Failing tests** | None failed. **Test gap:** TC-SEC-14 has nothing to save and uses no real files, so locking finishes at once. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. |
 
 **Description.** If the PC goes to sleep while the open day has unsaved text, Journal freezes instead of saving and locking.
 
@@ -1192,7 +1269,7 @@ Clicking and pressing Enter both show it, so how the unlock is started doesn't a
 | **Area** | Tests, `docs/TestCases.md` |
 | **Failing requirements** | None known. Not verified: NFR-SEC-07 (settings files hold no journal content), NFR-PERF-02 (switching days within 300 ms, or 1 second with 10 images). Partly verified: FR-TAB-07 (tabs are independent). |
 | **Failing tests** | None failed; the tests don't exist. |
-| **Status** | Fixed 2026-11-04, released in version 1.2.0, waiting for the owner to verify. Approved by the owner 2026-11-04. The tests now exist; one of them shows a new bug, ISS-026. |
+| **Status** | Closed 2026-11-08. Verified by the owner 2026-11-08. Released in version 1.2.0. Approved by the owner 2026-11-04. The tests now exist; one of them shows a new bug, ISS-026. |
 
 **Description.** `docs/TestCases.md` marks every automated test case by level. Comparing those rows with the test code found:
 
@@ -1269,4 +1346,162 @@ In the run, **10 switches caused 10 saves**, with nothing edited.
 **Proposed tests.**
 - **New (automated):** opening and leaving a day with no edits saves nothing, for days with text, checklists, headings, lists, images and files; the entry's modified time doesn't change; a real edit still saves.
 - **TC-NFR-14:** must pass, or NFR-PERF-02 is changed by the owner's decision.
+
+---
+
+## ISS-027: Some built-in verse passages are very long
+
+| | |
+|---|---|
+| **Reported** | 2026-11-08, by the owner while reviewing the ISS-012 passages |
+| **Type / Severity** | Change / Low |
+| **Area** | Built-in verse content (`verses.json`); the verse card |
+| **Requirements to change** | Possibly FR-INSP-18 (a length limit) or FR-INSP-15 (how long passages are shown). |
+| **Tests to change** | Possibly TC-INSP-17 (a length check) and TC-INSP-15. |
+| **Status** | Deferred by the owner 2026-11-08: "I like them, but I am torn about including them." To reconsider in the future. No work until then. |
+
+**Description.** Some of the new scripture passages are much longer than a Bible verse. The card shows about seven lines and scrolls the rest (FR-INSP-15), so a long passage is only partly visible at a glance.
+
+**How long they are (characters, 2026-11-08).**
+
+| Scripture | Passages | Median | Longest | Over 500 | Over 800 |
+|---|---|---|---|---|---|
+| Bible (WEB) | 477 | 113 | 688 | 5 | 0 |
+| Hebrew Bible | 124 | 147 | 691 | 6 | 0 |
+| Quran | 128 | 218 | 794 | 11 | 0 |
+| Bhagavad Gita | 106 | 272 | 696 | 15 | 0 |
+| Dhammapada | 397 | 142 | 467 | 0 | 0 |
+| Tao Te Ching | 81 | 662 | 1,547 | 62 | 26 |
+| Chuang Tzu | 37 | 386 | 2,017 | 12 | 5 |
+| Sikh hymns | 69 | 393 | 1,689 | 21 | 8 |
+
+For comparison, quotes have a median of 112 to 185 characters and a longest of 507. The long ones are mostly whole Tao Te Ching chapters, Chuang Tzu stories (Prince Hui's cook, the cataract) and Japji pauris.
+
+**Options for later.**
+1. **Leave them as they are.** The card already scrolls.
+2. **Cap the length,** for example at 500 characters or eight lines. Longer passages are split into whole-sentence parts (Tao Te Ching chapters by Legge's paragraph numbers, Japji pauris by line) or left out.
+3. **Show the start and a "Read more" link** that opens the whole passage. The card stays short and nothing is lost.
+4. **A setting** "Include long passages", on or off.
+
+---
+
+## ISS-028: Add Humanism as a quote category
+
+| | |
+|---|---|
+| **Reported** | 2026-11-08, by the owner |
+| **Type / Severity** | Change / Low |
+| **Area** | Built-in quotes (`quotes.json`) |
+| **Requirements to change** | FR-INSP-02 (the categories named); a new content requirement like FR-INSP-21. |
+| **Tests to change** | TC-INSP-16 (the list of categories); a new content test like TC-INSP-20. |
+| **Status** | Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the answers below. |
+
+**Description.** The owner would like a Humanism category for the daily quote, alongside Philosophy, Literature and Science.
+
+**Is it possible?** Yes. Quote categories are defined by the content (FR-INSP-17, ISS-011), so Humanism needs quotes, not code: the card label HUMANISM, its Settings section and its filters appear by themselves. As with Science, the quotes would be spread through the list so the day-of-year mode shows them.
+
+**Proposal.**
+- **Content.** About 180 public-domain quotes from at least 15 humanist writers, chosen the way the Science quotes were: candidates from Project Gutenberg texts, each read and kept only if it stands on its own. The field or period is the tradition (for example Classical, Renaissance, Enlightenment, Freethought).
+- **Candidate writers** (public-domain translations where needed):
+  - Classical: Epicurus (*Letter to Menoeceus*); Lucretius (*On the Nature of Things*, tr. Munro or Leonard).
+  - Renaissance: Petrarch (letters); Erasmus (*The Praise of Folly*); Thomas More (*Utopia*).
+  - Enlightenment: Voltaire; Diderot; Thomas Paine (*The Age of Reason*, *Rights of Man*); Mary Wollstonecraft (*A Vindication of the Rights of Woman*).
+  - Nineteenth and early twentieth century: John Stuart Mill (*On Liberty*); Robert G. Ingersoll; Elizabeth Cady Stanton; Harriet Martineau; W. K. Clifford (*The Ethics of Belief*); Bertrand Russell (*A Free Man's Worship*, 1903).
+- **Sources:** downloading about 15 to 20 more Project Gutenberg texts, used only to extract the quotes, as for ISS-011 and ISS-012.
+
+**Questions for the owner.**
+1. **Quote category or verse tradition?** A quote category, like Science, seems the better fit, since humanism has no scripture. It could instead be a tradition under the verse card.
+2. **Writers already in other categories:** Montaigne, Franklin and Douglass are under Philosophy, and Huxley under Science. Should they stay where they are (proposed), or should some quotes move to Humanism?
+3. **How many quotes:** about 180, like Science, or fewer?
+4. **Scope:** secular humanism only, or also Renaissance and religious humanists such as Erasmus and More?
+
+**Owner's answers (2026-11-08).**
+1. **A quote category,** like Science.
+2. **Writers already in other categories stay where they are.** Humanism gets different writers; nothing already in the app moves.
+3. **About 180 quotes.**
+4. **All periods:** Classical, Renaissance and religious humanists, the Enlightenment and later freethinkers.
+
+
+**Proposed tests.** Like TC-INSP-20: a minimum count of distinct quotes and writers, each with work, tradition and source edition; none repeating another category's quote; spread so the day-of-year mode shows them. TC-INSP-16 then lists four categories.
+
+**Fix (2026-11-08).**
+- **Content:** 201 Humanism quotes from 16 writers.
+
+  | Period | Writers |
+  |---|---|
+  | Classical | Epicurus (tr. Yonge), Lucretius (tr. Leonard) |
+  | Renaissance | Petrarch (tr. Cosenza), Erasmus (tr. Wilson), Thomas More (tr. Burnet) |
+  | Enlightenment | Voltaire (tr. Woolf), Condorcet (tr. Vickery), Thomas Paine, Mary Wollstonecraft |
+  | Freethought | Frances Wright, Harriet Martineau, John Stuart Mill, George Jacob Holyoake, Robert G. Ingersoll, Elizabeth Cady Stanton, Bertrand Russell |
+
+- **How they were chosen:** about 560 candidate sentences from 17 Project Gutenberg texts were read. A quote was kept only if it stands on its own and is the writer's own words, not an editor's introduction or a quotation of someone else. Lucretius writes in verse, so his two passages were taken by hand from Leonard's lines.
+- **No code changes:** as with Science, the label HUMANISM, its Settings section and its filters come from the content.
+- **Spread through the list:** a Science and a Humanism quote now follow every two others, so the first 366 hold about 91 of each category. As with ISS-012, days not yet saved may show a different quote by day of year; saved days keep theirs.
+- **Requirement and tests:** new FR-INSP-22 and TC-INSP-21. TC-INSP-16 now expects four categories; TC-INSP-20 expects 80–110 science quotes in the first 366.
+
+**To verify:** a quote labelled HUMANISM appears, and Settings → Verse & quote has a Humanism section with its four periods. The review page lists the quotes as HU001 onward.
+
+---
+
+## ISS-029: Add Atheism as a verse tradition
+
+| | |
+|---|---|
+| **Reported** | 2026-11-08, by the owner ("Another tradition category: Atheism") |
+| **Type / Severity** | Change / Low |
+| **Area** | Built-in verse traditions (`verses.json`) |
+| **Requirements to change** | FR-INSP-18 (adds Atheism to the traditions, at about 120 passages); FR-INSP-19 (its label is ATHEISM, not a scripture's name). |
+| **Tests to change** | TC-INSP-17 (Atheism among the traditions, its count and label). |
+| **Status** | Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the answers below. |
+
+**Description.** The owner would like Atheism as another category.
+
+**Is it possible?** Yes, in either form:
+- **As a quote category,** like Science and the proposed Humanism (ISS-028): it needs content only, since quote categories come from the content (FR-INSP-17).
+- **As a verse tradition:** also content only, since verse traditions come from `verses.json` (FR-INSP-20). But atheism has no scripture, so its "passages" would be quotes from writers. They would be labelled with the work's name, not a scripture.
+
+**Proposal.**
+- **Form:** a quote category, as for Humanism.
+- **Content:** about 180 public-domain quotes from at least 12 writers, each read and kept only if it stands on its own, with the period as the tradition.
+- **Candidate writers** (public-domain editions or translations):
+  - Classical: Lucretius (*On the Nature of Things*).
+  - Eighteenth century: Jean Meslier (*Superstition in All Ages*, tr. 1878); Baron d'Holbach (*The System of Nature*, tr. 1868); Denis Diderot.
+  - Nineteenth century: Percy Bysshe Shelley (*The Necessity of Atheism*, 1811); Ludwig Feuerbach (*The Essence of Christianity*, tr. George Eliot, 1854); Ernestine Rose (*A Defence of Atheism*, 1861); Harriet Martineau; Charles Bradlaugh; Annie Besant (her early freethought writings); G. W. Foote.
+  - Early twentieth century: Emma Goldman (*The Philosophy of Atheism*, 1916); Clarence Darrow; Bertrand Russell (*Why I Am Not a Christian*, 1927).
+- **Sources:** about 12 to 15 more Project Gutenberg texts, used only to extract the quotes. A few of these writers may not be on Gutenberg; they would need another source, approved by the owner first, as for ISS-012.
+
+**Questions for the owner.**
+1. **Quote category or verse tradition?** A quote category seems the better fit.
+2. **Overlap with Humanism (ISS-028):** freethinkers such as Ingersoll and Russell fit both. Proposed: each writer goes in one category only.
+3. **Agnostics:** include writers who called themselves agnostic, such as Ingersoll and Huxley, or only declared atheists?
+4. **Shown by default?** New quote categories are shown until the user turns them off (FR-INSP-17), so Atheism would appear for everyone by default. Should it be off by default instead, as the other scriptures are on the verse card? Off by default would need a small code change: categories that start turned off.
+5. **How many quotes:** about 180, like Science?
+
+**Owner's answers (2026-11-08).** These replace the proposal above where they differ.
+1. **A verse tradition,** not a quote category. It is listed in Settings with the other traditions and, like them, **starts turned off**. No code change is needed: only Christianity is ticked by default.
+2. **The card label is ATHEISM** for every passage. The reference line gives the writer and work, for example "Ingersoll, Some Mistakes of Moses"; the translation field gives the translator where there is one.
+3. **Agnostics are included** (for example Ingersoll and Huxley), so the tradition covers unbelief generally.
+4. **Writers may appear in both Atheism and Humanism (ISS-028),** with different passages.
+5. **About 120 passages,** like the other traditions.
+
+**Revised design.**
+- **Content:** each passage records the tradition "Atheism" and the scripture "Atheism", which is the card label. The book is the work (so Settings can filter by work). The reference is "Writer, Work", plus a chapter or section where the edition has one.
+- **No code changes,** unless the label needs one. Today the label is the scripture field in capitals, so "Atheism" gives ATHEISM.
+- **Sources:** about 12 to 15 public-domain texts from Project Gutenberg; any writer not there needs another source, approved by the owner first.
+
+
+**Proposed tests (revised).** TC-INSP-17: Atheism is among the traditions with at least 100 distinct complete passages, each with a writer and work in its reference, and none repeating another tradition's passage or a quote. TC-INSP-19: Settings list Atheism unticked by default.
+
+**Fix (2026-11-08).**
+- **Content:** 117 passages from 12 writers, agnostics included: Lucretius (4, tr. Leonard), Baron d'Holbach (*The System of Nature*; *Superstition in All Ages*, tr. Knoop), Shelley (*Prose Works*), Feuerbach (*The Essence of Christianity*, tr. George Eliot), Charles Bradlaugh, G. W. Foote, Robert G. Ingersoll, Thomas Henry Huxley, Ernst Haeckel (tr. McCabe), Robert Blatchford, Emma Goldman and Chapman Cohen. About 345 candidates from 14 Gutenberg texts were read.
+- **Shown as designed:**
+  - The tradition is "Atheism" and its label is ATHEISM.
+  - The reference line gives "Writer, Work", and the translator where there is one ("Feuerbach, The Essence of Christianity · Eliot").
+  - Each work is a "book", so Settings can narrow Atheism to particular writers.
+  - Like the other traditions it starts turned off.
+  - No code change was needed.
+- **Not included:** Ernestine Rose, Annie Besant's atheist writings and Russell's *Why I Am Not a Christian* aren't on Project Gutenberg, so they would need another source. Ingersoll appears in both Humanism and Atheism, with different passages, as the owner allowed.
+- **Requirements and tests:** FR-INSP-18 and FR-INSP-19 now include Atheism. TC-INSP-17 checks at least 100 Atheism passages from at least 12 writers, the "Writer, Work" reference and the ATHEISM label.
+
+**To verify:** in Settings → Verse & quote, Atheism is listed unticked. Tick it, step through a few days, and passages labelled ATHEISM appear in turn with the other ticked traditions. The review page lists them as AT001 onward.
 

@@ -75,26 +75,40 @@
                     <StackPanel>
                         <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                             <StackPanel>
-                                <CheckBox Content="Show a Bible verse each day" IsChecked="{Binding ShowVerse}" FontWeight="SemiBold" />
+                                <CheckBox Content="Show a verse each day" IsChecked="{Binding ShowVerse}" FontWeight="SemiBold" />
                                 <StackPanel Margin="22,8,0,0" IsEnabled="{Binding ShowVerse}">
-                                    <RadioButton Content="World English Bible (built in)" IsChecked="{Binding UseImportedVerses, Converter={StaticResource Invert}}" GroupName="vs" />
+                                    <RadioButton Content="Built-in scriptures" IsChecked="{Binding UseImportedVerses, Converter={StaticResource Invert}}" GroupName="vs" />
                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                         <RadioButton Content="My imported verses" IsChecked="{Binding UseImportedVerses}" GroupName="vs" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding ImportedVersesText}" Foreground="{StaticResource InkMuted}" Margin="8,0,8,0" VerticalAlignment="Center" />
                                         <Button Content="Import…" Padding="8,2" Command="{Binding ImportVersesCommand}"
-                                                ToolTip="CSV or JSON with reference, text, translation" />
+                                                ToolTip="CSV or JSON with reference, text, translation, and optionally scripture" />
                                     </StackPanel>
-                                    <TextBlock Text="ONLY THESE BOOKS (none checked = all)" Style="{StaticResource Label}" Margin="0,12,0,4" />
-                                    <ItemsControl ItemsSource="{Binding Books}" MaxHeight="150" AutomationProperties.Name="Books">
-                                        <ItemsControl.Template>
-                                            <ControlTemplate><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer></ControlTemplate>
-                                        </ItemsControl.Template>
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate><controls:ColumnPanel Columns="3" /></ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
+                                    <!-- One section per tradition, Christianity first (ISS-012). Only Christianity is ticked at first. -->
+                                    <ItemsControl ItemsSource="{Binding VerseSections}" AutomationProperties.Name="Verse traditions">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,2,8,2" />
+                                                <StackPanel Margin="0,14,0,0">
+                                                    <TextBlock Text="{Binding Heading}" Style="{StaticResource Label}" />
+                                                    <CheckBox Content="{Binding IncludeLabel}" IsChecked="{Binding IsIncluded}" Margin="0,6,0,0" />
+                                                    <StackPanel Margin="22,6,0,0" IsEnabled="{Binding IsIncluded}"
+                                                                Visibility="{Binding HasBooks, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="Only these books (none ticked = all)" Foreground="{StaticResource InkMuted}" Margin="0,0,0,4" />
+                                                        <ItemsControl ItemsSource="{Binding Books}" MaxHeight="150" AutomationProperties.Name="{Binding Heading, StringFormat={}{0} books}">
+                                                            <ItemsControl.Template>
+                                                                <ControlTemplate><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer></ControlTemplate>
+                                                            </ItemsControl.Template>
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate><controls:ColumnPanel Columns="3" /></ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,2,8,2" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

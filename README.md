@@ -60,4 +60,6 @@ The version is set in one place, `<Version>` in `Directory.Build.props`, and the
 ## Content sources
 
 - Bible verses: World English Bible (public domain), from ebible.org.
-- Philosophy and literature quotes: public-domain editions from Project Gutenberg. Each quote records its category and source edition in `src/Journal.Infrastructure/Content/quotes.json`.
+- Other scriptures (ISS-012), all public-domain translations: Hebrew Bible, JPS 1917 (Wikisource); Quran, tr. Marmaduke Pickthall (1930); Bhagavad Gita, tr. Edwin Arnold (1885); Dhammapada, tr. F. Max Müller (1881); Tao Te Ching, tr. James Legge (1891); Chuang Tzu, tr. Herbert A. Giles (1889), all from Project Gutenberg; Sikh hymns (Japji, Asa ki War, Sohila), tr. Max Arthur Macauliffe (1909), from the archive.org scan, corrected by hand. Each passage records its tradition, scripture and translation in `src/Journal.Infrastructure/Content/verses.json`.
+- Atheism (ISS-029): public-domain works of Lucretius (tr. Leonard), d'Holbach, Shelley, Feuerbach (tr. George Eliot), Bradlaugh, Foote, Ingersoll, Huxley, Haeckel (tr. McCabe), Blatchford, Goldman and Chapman Cohen, from Project Gutenberg.
+- Philosophy, literature, science and humanism quotes: public-domain editions from Project Gutenberg. Each quote records its category and source edition in `src/Journal.Infrastructure/Content/quotes.json`.

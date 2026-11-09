@@ -47,7 +47,7 @@ public class SettingsLayoutTests
 
         AssertDownColumns([.. PhilosophyTraditions.Order(StringComparer.CurrentCultureIgnoreCase)], In(List("PHILOSOPHY traditions")), window);
         AssertDownColumns(["Chinese", "English", "Persian"], In(List("LITERATURE traditions")), window);
-        AssertDownColumns(Books, In(List("Books")), window);
+        AssertDownColumns(Books, In(List("CHRISTIANITY books")), window);
         window.Close();
         await Task.CompletedTask;
     });

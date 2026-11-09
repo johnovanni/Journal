@@ -207,7 +207,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <DockPanel Grid.Column="0" Visibility="{Binding Inspiration.HasVerse, Converter={StaticResource BoolToVis}}">
-                                <TextBlock DockPanel.Dock="Top" Text="VERSE" Style="{StaticResource Label}" />
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding Inspiration.VerseLabel}" Style="{StaticResource Label}" AutomationProperties.Name="Verse label" />
                                 <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                                     <Button DockPanel.Dock="Right" Style="{StaticResource CopyButton}" Command="{Binding Inspiration.CopyVerseCommand}"
                                             ToolTip="Copy the verse with its reference" AutomationProperties.Name="Copy verse">

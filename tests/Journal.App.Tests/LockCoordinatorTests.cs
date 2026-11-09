@@ -234,6 +234,6 @@ public class LockCoordinatorTests
         var actions = new SettingsActions(new FakeOpenJournal(), new FakeStore(), r.Locks, new FakeDialogs(), () => { });
         Assert.Throws<InvalidOperationException>(() => actions.Session);
         Assert.Equal(0, actions.ImportedVerseCount);
-        Assert.Empty(actions.AvailableBooks);
+        Assert.Empty(actions.VerseTraditions);
     });
 }

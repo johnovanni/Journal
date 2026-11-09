@@ -7,6 +7,25 @@ public sealed record Verse(string Reference, string Text, string Translation)
     /// <summary>Book name, e.g. "Psalms" for "Psalm 23:1" (derived from the reference when not stored).</summary>
     public string Book { get; init; } = BookOf(Reference);
 
+    /// <summary>
+    /// The religious tradition, e.g. "Islam" (FR-INSP-18). Not stored for days saved before ISS-012 or for
+    /// imported verses; see <see cref="TraditionName"/>.
+    /// </summary>
+    public string? Tradition { get; init; }
+
+    /// <summary>The scripture, e.g. "Quran", shown as the card label (FR-INSP-19).</summary>
+    public string? Scripture { get; init; }
+
+    /// <summary>The tradition, counting a World English Bible verse saved before ISS-012 as Christianity.</summary>
+    public string TraditionName() => Tradition ?? (Translation == VerseTraditions.WebTranslation ? VerseTraditions.Christianity : "");
+
+    /// <summary>
+    /// The card label: the scripture's name, e.g. QURAN. A World English Bible verse saved before ISS-012 shows
+    /// BIBLE; an imported verse that names no scripture shows VERSE (FR-INSP-19).
+    /// </summary>
+    public string CardLabel() =>
+        (Scripture ?? (Translation == VerseTraditions.WebTranslation ? VerseTraditions.Bible : "Verse")).ToUpperInvariant();
+
     public static string BookOf(string reference)
     {
         var space = reference.LastIndexOf(' ');
@@ -26,11 +45,21 @@ public sealed record Quote(string Text, string Author, string? Work, string Trad
     public string Category { get; init; } = QuoteCategories.Philosophy;
 }
 
+/// <summary>Names used for the built-in scriptures (FR-INSP-18).</summary>
+public static class VerseTraditions
+{
+    public const string Christianity = "Christianity";
+    public const string Bible = "Bible";
+    /// <summary>The World English Bible, the translation of every built-in verse before ISS-012.</summary>
+    public const string WebTranslation = "WEB";
+}
+
 /// <summary>Well-known quote categories. Any other name in the content is a category too (FR-INSP-17).</summary>
 public static class QuoteCategories
 {
     public const string Philosophy = "Philosophy";
     public const string Literature = "Literature";
+    public const string Science = "Science";
     /// <summary>Category for imported quotes whose file doesn't name one.</summary>
     public const string Imported = "Quote";
 }

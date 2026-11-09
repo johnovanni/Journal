@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Journal.Core.Documents;
 using Journal.Core.Domain;
+using Journal.Core.Inspiration;
 using Journal.Core.Persistence;
 using Journal.Core.Security;
 using Journal.Core.Tests.Support;
@@ -454,10 +455,10 @@ public class KeyProtectorTests
 
 public class ContentTests
 {
-    [Fact(DisplayName = "TC-INSP-02 Built-in verses: ≥366 distinct WEB verses with valid references")]
+    [Fact(DisplayName = "TC-INSP-02 Built-in Bible verses: ≥366 distinct WEB verses with valid references")]
     public void Verses()
     {
-        var verses = new EmbeddedVerseSource().All();
+        var verses = new EmbeddedVerseSource().All().Where(v => v.Tradition == VerseTraditions.Christianity).ToList();
         Assert.True(verses.Count >= 366, $"{verses.Count} verses");
         Assert.Equal(verses.Count, verses.Select(v => v.Reference).Distinct().Count());
         Assert.All(verses, v =>
@@ -497,7 +498,7 @@ public class ContentTests
     public void LiteratureQuotes()
     {
         var all = new EmbeddedQuoteSource().All();
-        Assert.Equal(["Literature", "Philosophy"], all.Select(q => q.Category).Distinct().Order());
+        Assert.Equal(["Humanism", "Literature", "Philosophy", "Science"], all.Select(q => q.Category).Distinct().Order());
         var lit = all.Where(q => q.Category == QuoteCategories.Literature).ToList();
         var phil = all.Where(q => q.Category == QuoteCategories.Philosophy).ToList();
         Assert.True(lit.Count >= 366, $"{lit.Count} literature quotes");
@@ -510,8 +511,101 @@ public class ContentTests
         Assert.Contains("Latin American", regions);
         Assert.Contains("African", regions);
         Assert.All(lit, q => Assert.False(string.IsNullOrWhiteSpace(q.Work), q.Text));
-        // "By day of year" uses the first 366 quotes, so both categories must be among them.
-        Assert.Equal(2, all.Take(366).Select(q => q.Category).Distinct().Count());
+        // "By day of year" uses the first 366 quotes, so every category must be among them.
+        Assert.Equal(4, all.Take(366).Select(q => q.Category).Distinct().Count());
+    }
+
+    [Fact(DisplayName = "TC-INSP-20 Built-in science: ≥180 distinct quotes from ≥20 scientists, each with field, work and source")]
+    public void ScienceQuotes()
+    {
+        var all = new EmbeddedQuoteSource().All();
+        var sci = all.Where(q => q.Category == QuoteCategories.Science).ToList();
+        Assert.True(sci.Count >= 180, $"{sci.Count} science quotes");
+        Assert.Equal(sci.Count, sci.Select(q => q.Text).Distinct().Count());
+        Assert.Empty(sci.Select(q => q.Text).Intersect(all.Where(q => q.Category != QuoteCategories.Science).Select(q => q.Text)));
+        Assert.True(sci.Select(q => q.Author).Distinct().Count() >= 20);
+        Assert.All(sci, q =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(q.Work), q.Text);
+            Assert.False(string.IsNullOrWhiteSpace(q.Source), q.Text);
+            Assert.Contains(q.Tradition, new[] { "Astronomy", "Biology", "Chemistry", "Geology", "Mathematics", "Medicine", "Natural History", "Natural Philosophy", "Physics" });
+            Assert.True(DailyInspirationService.IsCompleteSentence(q.Text), q.Text);
+        });
+        // Spread through the list, so "by day of year" shows them: about a quarter of the first 366.
+        Assert.InRange(all.Take(366).Count(q => q.Category == QuoteCategories.Science), 80, 110);
+    }
+
+    [Fact(DisplayName = "TC-INSP-21 Built-in humanism: ≥180 distinct quotes from ≥15 writers of every period, each with work and source")]
+    public void HumanismQuotes()
+    {
+        var all = new EmbeddedQuoteSource().All();
+        var hum = all.Where(q => q.Category == "Humanism").ToList();
+        Assert.True(hum.Count >= 180, $"{hum.Count} humanism quotes");
+        Assert.Equal(hum.Count, hum.Select(q => q.Text).Distinct().Count());
+        Assert.Empty(hum.Select(q => q.Text).Intersect(all.Where(q => q.Category != "Humanism").Select(q => q.Text)));
+        Assert.True(hum.Select(q => q.Author).Distinct().Count() >= 15);
+        Assert.Equal(["Classical", "Enlightenment", "Freethought", "Renaissance"], hum.Select(q => q.Tradition).Distinct().Order());
+        // Writers already in another category stay there (owner, ISS-028).
+        Assert.Empty(hum.Select(q => q.Author).Intersect(all.Where(q => q.Category != "Humanism").Select(q => q.Author)));
+        Assert.All(hum, q =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(q.Work), q.Text);
+            Assert.False(string.IsNullOrWhiteSpace(q.Source), q.Text);
+            Assert.True(DailyInspirationService.IsCompleteSentence(q.Text), q.Text);
+        });
+        Assert.InRange(all.Take(366).Count(q => q.Category == "Humanism"), 80, 110);
+    }
+
+    [Fact(DisplayName = "TC-INSP-17 Built-in scriptures: the Bible as before, and ≥60 complete passages for each other tradition")]
+    public void Scriptures()
+    {
+        var all = new EmbeddedVerseSource().All();
+        var bible = all.Where(v => v.Tradition == VerseTraditions.Christianity).ToList();
+        Assert.True(bible.Count >= 366);
+        Assert.All(bible, v => { Assert.Equal("WEB", v.Translation); Assert.Equal(VerseTraditions.Bible, v.Scripture); });
+        Assert.Equal(all.Count, all.Count(v => v.Tradition is not null && v.Scripture is not null));
+
+        var expected = new Dictionary<string, string[]>
+        {
+            ["Judaism"] = ["Hebrew Bible"], ["Islam"] = ["Quran"], ["Hinduism"] = ["Bhagavad Gita"], ["Buddhism"] = ["Dhammapada"],
+            ["Taoism"] = ["Tao Te Ching", "Chuang Tzu"], ["Sikhism"] = ["Guru Granth Sahib"], ["Atheism"] = ["Atheism"],
+        };
+        var translations = new Dictionary<string, string>
+        {
+            ["Hebrew Bible"] = "JPS 1917", ["Quran"] = "Pickthall", ["Bhagavad Gita"] = "Arnold", ["Dhammapada"] = "Müller",
+            ["Tao Te Ching"] = "Legge", ["Chuang Tzu"] = "Giles", ["Guru Granth Sahib"] = "Macauliffe",
+        };
+        Assert.Equal(expected.Keys.Append(VerseTraditions.Christianity).Order(), all.Select(v => v.Tradition!).Distinct().Order());
+        foreach (var (tradition, scriptures) in expected)
+        {
+            var passages = all.Where(v => v.Tradition == tradition).ToList();
+            Assert.True(passages.Count >= 60, $"{tradition}: {passages.Count} passages");
+            if (tradition == "Atheism")
+            {
+                Assert.True(passages.Count >= 100, $"Atheism: {passages.Count} passages");
+                Assert.True(passages.Select(v => v.Reference.Split(',')[0]).Distinct().Count() >= 12);
+                Assert.All(passages, v => Assert.Equal("ATHEISM", v.CardLabel()));
+            }
+            Assert.Equal(scriptures, passages.Select(v => v.Scripture!).Distinct());
+            Assert.Equal(passages.Count, passages.Select(v => v.Text).Distinct().Count());
+            Assert.All(passages, v =>
+            {
+                if (v.Tradition == "Atheism")
+                {
+                    // Writers rather than a scripture: the reference is "Writer, Work", which is also the book (ISS-029).
+                    Assert.Matches(@"^[^,]+, \S.*$", v.Reference);
+                    Assert.Equal(v.Reference, v.Book);
+                }
+                else Assert.Equal(translations[v.Scripture!], v.Translation);
+                Assert.False(string.IsNullOrWhiteSpace(v.Reference));
+                Assert.False(string.IsNullOrWhiteSpace(v.Book));
+                Assert.True(DailyInspirationService.IsCompleteSentence(v.Text), $"{v.Reference}: …{v.Text[^Math.Min(40, v.Text.Length)..]}");
+                Assert.DoesNotMatch(@"\[FN|[*^|_]|\s{2}|\d", v.Text);   // no OCR debris or footnote numbers
+            });
+        }
+        // No passage repeats another tradition's (the Bible itself has Psalms 107:1 and 136:1 alike).
+        var others = all.Where(v => v.Tradition != VerseTraditions.Christianity).ToList();
+        Assert.Equal(others.Count, others.Select(v => v.Text).Concat(bible.Select(v => v.Text).Distinct()).Distinct().Count() - bible.Select(v => v.Text).Distinct().Count());
     }
 
     [Fact(DisplayName = "TC-NFR-23 Every built-in quote records a public-domain source edition")]
