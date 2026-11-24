@@ -421,11 +421,19 @@ public sealed partial class EntryViewModel : ObservableObject
         if (IsReadOnly || Entry is null) return;
         if (!IsDirty)
         {
-            // Captions and checkboxes may change without a text change; compare before saving.
-            var before = Tabs.Select(t => Journal.Core.Persistence.JournalJson.SerializeDocument(t.Model.Document)).ToList();
+            // Captions and checkboxes may change without a text change; compare before saving. The comparison
+            // ignores block ids, which the editor renews on every read, so looking at a day never saves it (ISS-026).
+            var before = Tabs.Select(t => t.Model.Document).ToList();
             CaptureAll();
-            var after = Tabs.Select(t => Journal.Core.Persistence.JournalJson.SerializeDocument(t.Model.Document)).ToList();
-            if (before.SequenceEqual(after)) return;
+            bool unchanged = true;
+            for (int i = 0; i < Tabs.Count; i++)
+                unchanged &= Journal.Core.Persistence.JournalJson.SameContent(before[i], Tabs[i].Model.Document);
+            if (unchanged)
+            {
+                // Keep the documents as they were read, ids included.
+                for (int i = 0; i < Tabs.Count; i++) Tabs[i].Model.Document = before[i];
+                return;
+            }
         }
         await SaveAsync();
     }

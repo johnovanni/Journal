@@ -14,6 +14,14 @@
         <Border DockPanel.Dock="Top" Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="16,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <!-- Graphs of tracked values (FR-TRK-09), shown when they are turned on -->
+                    <Button Command="{Binding OpenGraphsCommand}" ToolTip="Graphs of your tracked values" AutomationProperties.Name="Graphs"
+                            Margin="0,0,8,0" Visibility="{Binding Tracked.IsEnabled, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9D2;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                            <TextBlock Text="Graphs" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
                     <Button Command="{Binding OpenSettingsCommand}" ToolTip="Settings" AutomationProperties.Name="Settings" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
@@ -51,10 +59,10 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left: calendar and search -->
-            <DockPanel Grid.Column="0">
-                <c:MonthCalendarControl DockPanel.Dock="Top" DataContext="{Binding Calendar}" />
+            <DockPanel Grid.Column="0" x:Name="LeftColumn">
+                <c:MonthCalendarControl x:Name="CalendarView" DockPanel.Dock="Top" DataContext="{Binding Calendar}" />
                 <!-- Mood counts (FR-MOOD-04) -->
-                <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Padding="14,10" Margin="0,12,0,0" DataContext="{Binding Moods}"
+                <Border x:Name="MoodsCard" DockPanel.Dock="Top" Style="{StaticResource Card}" Padding="14,10" Margin="0,12,0,0" DataContext="{Binding Moods}"
                         AutomationProperties.Name="Mood counts">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -79,7 +87,55 @@
                         <c:MoodCount Grid.Row="2" Grid.Column="3" Mood="Happy" Count="{Binding Last12Months.Happy}" Margin="10,4,0,0" />
                     </Grid>
                 </Border>
-                <StackPanel DockPanel.Dock="Top" Margin="0,16,0,8" DataContext="{Binding Search}">
+                <!-- Tracked values ticked for the main screen, at most two (FR-TRK-08). Each opens the Graphs window. -->
+                <Border x:Name="TrackedCard" DockPanel.Dock="Top" Style="{StaticResource Card}" Padding="8,6" Margin="0,12,0,0"
+                        DataContext="{Binding Tracked}" Visibility="{Binding ShowCards, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl ItemsSource="{Binding Cards}" AutomationProperties.Name="Tracked values" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding DataContext.OpenGraphsCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}" AutomationProperties.Name="{Binding AutomationName}" ToolTip="Open the graphs"
+                                        Cursor="Hand" HorizontalContentAlignment="Stretch">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="b" Background="Transparent" CornerRadius="6" Padding="6,4">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="b" Property="Background" Value="{StaticResource SurfaceAlt}" />
+                                                </Trigger>
+                                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                                    <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <DockPanel>
+                                        <c:LineChart x:Name="Spark" DockPanel.Dock="Right" Width="104" Height="32" Margin="10,0,0,0"
+                                                     Points="{Binding Points}" IsHitTestVisible="False" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Name="NameLine" Text="{Binding Name}" FontSize="12" Foreground="{StaticResource InkMuted}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock TextTrimming="CharacterEllipsis"><Run x:Name="CompactName" Text="" Foreground="{StaticResource InkMuted}"
+                                                /><Run Text="{Binding LatestText, Mode=OneWay}" FontWeight="SemiBold"
+                                                /><Run Text="{Binding WhenText, Mode=OneWay, StringFormat={} · {0}}" FontSize="11" Foreground="{StaticResource InkMuted}" /></TextBlock>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Button>
+                                <DataTemplate.Triggers>
+                                    <!-- A short window shows one line per value, without the graph (FR-TRK-08). -->
+                                    <DataTrigger Binding="{Binding DataContext.IsCompact, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True">
+                                        <Setter TargetName="Spark" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="NameLine" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="CompactName" Property="Text" Value="{Binding Name, Mode=OneWay, StringFormat={}{0}: }" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+                <StackPanel x:Name="SearchPanel" DockPanel.Dock="Top" Margin="0,16,0,8" DataContext="{Binding Search}">
                     <Grid>
                         <TextBox x:Name="SearchBox" Text="{Binding QueryText, UpdateSourceTrigger=PropertyChanged}" Padding="30,7,28,7"
                                  AutomationProperties.Name="Search the journal" ToolTip="Words, &quot;a phrase&quot;, tag:name, in:captions, from:2026-01-01, is:open">
@@ -280,8 +336,13 @@
                     </WrapPanel>
                 </DockPanel>
 
-                <!-- Tabs with the editor -->
+                <!-- Tabs with the editor. The tab control shows only the headers; one editor stays in place and shows the
+                     selected tab, so switching days or tabs doesn't build a new editor each time (ISS-026). -->
                 <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
                     <TabControl x:Name="Tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" Background="Transparent"
                                 BorderThickness="0" Padding="0">
                         <TabControl.ItemTemplate>
@@ -297,13 +358,13 @@
                             </DataTemplate>
                         </TabControl.ItemTemplate>
                         <TabControl.ContentTemplate>
-                            <DataTemplate>
-                                <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="0,8,8,8">
-                                    <c:JournalEditor />
-                                </Border>
-                            </DataTemplate>
+                            <DataTemplate />
                         </TabControl.ContentTemplate>
                     </TabControl>
+                    <Border Grid.Row="1" Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="0,8,8,8"
+                            DataContext="{Binding SelectedTab}">
+                        <c:JournalEditor />
+                    </Border>
                     <Button HorizontalAlignment="Right" VerticalAlignment="Top" Padding="10,4" Margin="0,2,0,0"
                             Command="{Binding AddTabCommand}" ToolTip="Add a tab for a tag" AutomationProperties.Name="Add tab">
                         <StackPanel Orientation="Horizontal">

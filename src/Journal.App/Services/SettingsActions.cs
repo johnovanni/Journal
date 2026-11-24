@@ -3,6 +3,7 @@ using Journal.App.ViewModels;
 using Journal.Core.Inspiration;
 using Journal.Core.Security;
 using Journal.Core.Settings;
+using Journal.Core.Tracking;
 using Journal.Infrastructure;
 using Journal.Infrastructure.Storage;
 
@@ -35,6 +36,10 @@ public sealed class SettingsActions(
     public IReadOnlyList<QuoteCategory> QuoteCategories => journal.Services?.Journal.Inspiration.AvailableCategories() ?? [];
     public int ImportedVerseCount => journal.Services?.ImportedVerses.Count ?? 0;
     public int ImportedQuoteCount => journal.Services?.ImportedQuotes.Count ?? 0;
+    public IReadOnlyList<Measure> Measures => journal.Services?.Journal.Tracking.Measures ?? [];
+
+    public Task SaveMeasuresAsync(IReadOnlyList<Measure> measures) =>
+        journal.Services?.Journal.Tracking.SaveMeasuresAsync(measures) ?? Task.CompletedTask;
 
     public async Task<string> ImportVersesAsync(string path)
     {
@@ -73,7 +78,7 @@ public sealed class SettingsActions(
         locks.Tick();
         if (journal.Main is { } main)
         {
-            main.Calendar.WeekStart = settings.WeekStart;
+            main.SettingsApplied(settings);
             if (main.CurrentEntry is { } entry) await entry.RefreshInspirationAsync();
         }
     }

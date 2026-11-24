@@ -68,6 +68,8 @@
 | TC-ENT-07 | FR-ENT-07 | I | Create entry with text, save; clear all text and save again. Separately save an entry that was never non-empty. Ask each kind of block, and a document of mixed blocks, whether it is empty and which vault files it uses. | First: entry file deleted, catalog no longer has the date. Second: no file written. A paragraph is empty when blank; an image or file never is; a document is empty only if every block is, and lists files in block order (ISS-020). |
 | TC-ENT-08 | FR-ENT-08 | I | Entry with 1 image and 1 file; delete with confirmation; cancel in a second attempt. | Confirmed: entry, image blob and file blob removed. Cancelled: nothing removed. |
 | TC-ENT-09 | FR-ENT-09 | I | Corrupt one byte of one entry file; unlock and open that day and another day. | That day shows "This entry could not be read"; file bytes unchanged on disk; editor read-only for that day; other days open normally. |
+| TC-ENT-10 | FR-ENT-10 | U/A | Open the real main window on a day with a heading, bold and coloured text, centred text, bulleted, nested and numbered lists, ticked and open checklist items, an image with a caption and set width, a file, a line break and a second tab, plus a plain day. Switch between them three times, looking at both tabs. Also compare two documents that differ only in their blocks' ids. | No save at all, and the day's modified time is unchanged. The two documents count as the same content; documents that differ in a tick, a caption or a block don't, and saved files still keep the ids. |
+| TC-ENT-11 | FR-ENT-10, FR-ENT-05 | A | On the same day, type a word and switch day; then tick an open checklist item (no text change) and switch day. | Exactly one save after each change, and the saved day has the new word and both items ticked. |
 
 ### 2.3 Editor
 
@@ -229,7 +231,21 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | TC-MOOD-05 | FR-MOOD-05 | A | Click Happy, then Sad, then Sad again. | Each click saves at once (no autosave wait); the calendar cell and both counts follow each click; after the last click the day has no mood and, being empty, is removed. |
 | TC-MOOD-06 | FR-MOOD-01, FR-MOOD-03, FR-MOOD-04 | A/M | Open the real main window at its smallest size (1000×650) and choose a mood. Then look at it in light theme at 100 % and 150 % scaling. | The three faces are visible to the right of the heading without overlapping it; the counts card shows six counts with the happy day counted. Faces, tints and counts are easy to read. |
 
-### 2.13 Non-functional
+### 2.13 Tracked values
+
+| ID | Req | Lvl | Steps / input | Expected result |
+|---|---|---|---|---|
+| TC-TRK-01 | FR-TRK-04, FR-TRK-05 | U | Read `##weight=182.4`, `##Weight = 182,4`, `##blood  Pressure=120/80 after coffee`, `##temperature=-3.5.` and two values on one line; then `##weight=heavy`, `##weight=`, `#weight=180`, `##weight 180`, `##=180`, `##weight=1,250,000`, `##weight=12abc`, `##weight=1/2/3` and `NaN`. | The first five give weight 182.4 (twice), blood pressure 120/80, temperature −3.5 and both values; names are matched ignoring case and extra spaces. None of the rest gives a value. |
+| TC-TRK-02 | FR-TRK-02, FR-TRK-04 | U/A | First number of `181.9 after a run`, `Reading: 120/80, a bit high`, `ran 3rd, then 5 km`, `##pulse=60 then 180` and a text with no number. In Settings: add a value, tick a third for the main screen, save with an empty name and with a repeated name, then save a good list twice. | 181.9, 120/80, 5, 180 and none. The third tick is refused with a message; both bad lists show an error and save nothing; the good list and the switch are saved once, and saving again without changes doesn't rewrite the list. |
+| TC-TRK-03 | FR-TRK-05, FR-TRK-06 | U | Weights on Sun Oct 4, Mon Oct 5, Wed Oct 7 (two values), a "Weight" tab on Oct 13 and a future day; blood pressure on Sep 2, Sep 28 and Oct 1. Group by week starting Sunday and Monday, and by month. | Sunday weeks: Oct 4 → 187 (the later value on the later day), Oct 11 → 186. Monday weeks: Sep 28 → 190, Oct 5 → 187, Oct 12 → 186. Months: September → 125/82, October → 121/79. The future value is ignored. |
+| TC-TRK-04 | FR-TRK-02, FR-TRK-03 | U/I | Save measures with spaces around names, invalid names, repeated names and three on the main screen. In a real vault, save a measure whose name and unit carry a marker, then reopen. | Names and units are trimmed; each bad list is refused. In the vault neither marker appears in plaintext, and after reopening the measure and its values are back. |
+| TC-TRK-05 | FR-TRK-07 | U | A day written with `##mood score=7` before the measure exists; then edit it to 8, remove the line, and save and delete another day. | The value counts as soon as the measure is asked for; the graph follows each edit, and the removed and deleted values disappear. |
+| TC-TRK-06 | FR-TRK-01, FR-TRK-08 | A | Three measures, two ticked for the main screen; save a new value; untick one; turn the feature off and on; click a card. | Only the two ticked measures show, with their latest values ("186.5 lb", "121/79 mmHg") and graph points; a new value shows at once; unticking and turning off update the cards; clicking asks for the Graphs window at that measure. |
+| TC-TRK-07 | FR-TRK-09 | A | Open the Graphs window from the main window; read the rows; add a June value and switch between 3 months, 1 year and All; click a point and a row's date; close the main window. | Every measure is listed with "1 year" chosen; rows are newest first; the June value shows in 1 year and All but not in 3 months; the point and the row open their days in the main window; each graph has a screen-reader name and a values table; opening again brings the same window forward; it closes with the main window. |
+| TC-TRK-08 | FR-TRK-08, FR-TRK-01, NFR-USE-02 | A | Open the real main window, 1000 wide, at heights 820, 750 and 650 with two measures shown; type a search and clear it. Also open it with the feature off. | At 820 the card shows both values with small graphs; at 750 one line each without graphs; at 650 it is hidden. The search box is whole and inside the window, and the card never overlaps it. While searching the card is hidden. The Graphs button shows only when the feature is on. |
+| TC-TRK-09 | FR-TRK-08, FR-TRK-09 | M | Look at the main window's card and the Graphs window with a weekly and a paired monthly value, in light theme at 100 % and 150 % scaling. | Values, lines, points, labels and the two colours of a paired value are easy to read; hovering shows the day and value. |
+
+### 2.14 Non-functional
 
 | ID | Req | Lvl | Steps / input | Expected result |
 |---|---|---|---|---|
@@ -241,12 +257,12 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | TC-NFR-06 | NFR-SEC-04 | I | List `entries/` after saving 2026-10-15. | No file name contains `2026`, `1015` or any date pattern; name is 64 hex chars; same date always yields same name in one vault, different names in two vaults. |
 | TC-NFR-07 | NFR-SEC-05 | I | Inspect recovery slot in `vault.json`. | `kdf = PBKDF2-SHA256`, iterations ≥ 600000, salt 16 bytes, salt differs between two vaults. |
 | TC-NFR-08 | NFR-SEC-06 | I | Run a scripted session (unlock with recovery code, write marker text, tag, caption, attach file, search) with logging at Trace; scan log files. | No marker text, tag, caption, file name, recovery code or base64 key material in logs. |
-| TC-NFR-09 | NFR-SEC-07 | A | With a real vault holding marker text in entries, tags, captions, file names and imported lists, save settings through the Settings window's logic with every choice ticked, then scan the saved file. | No marker text, tags or imported list content, and only the expected setting names. |
+| TC-NFR-09 | NFR-SEC-07 | A | With a real vault holding marker text in entries, tags, captions, file names and imported lists, a `##name=value` line and a tracked value's name and unit, save settings through the Settings window's logic with every choice ticked, then scan the saved file. | No marker text, tags, imported list content or tracked-value names, and only the expected setting names; the tracked-values switch is the only tracking setting (FR-TRK-03). |
 | TC-NFR-10 | NFR-REL-01 | I | Inject failure after writing the temp file but before rename; then during temp write. | Original entry file still decrypts to the previous version; no `*.tmp` left after next unlock. |
 | TC-NFR-11 | NFR-REL-02 | I | Delete `catalog.jcat`; unlock. Then corrupt it; unlock. | Catalog rebuilt both times; calendar and search results equal those before. |
 | TC-NFR-12 | NFR-REL-03 | I | Remove an image from an entry and save; also remove the image, then undo before save. | First: blob deleted at the next clean-up (lock or unlock), never while the editor could still undo. Second: blob kept. Blob referenced by another entry is never deleted. |
 | TC-NFR-13 | NFR-PERF-01 | I | Vault with 3,650 generated entries; measure unlock (fake Hello) to catalog loaded and index built. | ≤ 2 s on the reference PC (release build, median of 5 runs). |
-| TC-NFR-14 | NFR-PERF-02 | A | In the real main window with a 3,650-entry vault: open a text-only entry and an entry with 10 × 1 MB images, on days not opened before. Skipped by default; run with `JOURNAL_PERF=1` in Release. | ≤ 300 ms and ≤ 1 s respectively (median of 5). **Currently misses both:** 1,116 ms and 1,268 ms on 2026-11-04, see ISS-026. |
+| TC-NFR-14 | NFR-PERF-02 | A | In the real main window with a 3,650-entry vault: open a text-only entry and an entry with 10 × 1 MB images, on days not opened before, in another month. Text-only days are timed until the day has been laid out and drawn; image days until all 10 images have loaded. The time until the window is fully idle is reported but not timed, since that wait alone takes 70–100 ms. Skipped by default; run with `JOURNAL_PERF=1` in Release. | ≤ 300 ms and ≤ 1 s respectively (median of 5), and no save during the run. On 2026-11-24, after ISS-026: 98 ms (about 190 ms including the idle wait) and 417 ms. |
 | TC-NFR-15 | NFR-PERF-03 | U | 3,650-entry index; run 20 mixed queries. | Each ≤ 200 ms; median ≤ 50 ms. |
 | TC-NFR-16 | NFR-PERF-04 | M | Type continuously for 30 s in a long entry while autosave runs. | No visible stutter; save happens on a background thread (verified in log timing). |
 | TC-NFR-17 | NFR-USE-01 | M | Do a full session with keyboard only: unlock, change month, open day, write, add tag/tab, search, lock. | All possible without mouse; Accessibility Insights shows names for calendar cells, image captions, attachment chips. |
@@ -260,7 +276,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 
 ## 3. Traceability matrix
 
-153 requirements, 170 test cases. Every requirement is covered by at least one test.
+163 requirements, 181 test cases. Every requirement is covered by at least one test.
 
 | Requirement | Pri | Test cases |
 |---|---|---|
@@ -290,11 +306,12 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-ENT-02 | M | TC-ENT-02 (A) |
 | FR-ENT-03 | M | TC-ENT-03 (A) |
 | FR-ENT-04 | M | TC-ENT-04 (A) |
-| FR-ENT-05 | M | TC-SEC-16 (A), TC-ENT-05 (A) |
+| FR-ENT-05 | M | TC-SEC-16 (A), TC-ENT-05 (A), TC-ENT-11 (A) |
 | FR-ENT-06 | M | TC-ENT-06 (A) |
 | FR-ENT-07 | M | TC-ENT-07 (I) |
 | FR-ENT-08 | M | TC-ENT-08 (I) |
 | FR-ENT-09 | M | TC-ENT-09 (I) |
+| FR-ENT-10 | M | TC-ENT-10 (U/A), TC-ENT-11 (A) |
 | FR-EDT-01 | M | TC-EDT-01 (M), TC-NFR-24 (A) |
 | FR-EDT-02 | M | TC-EDT-02 (A), TC-EDT-03 (A) |
 | FR-EDT-03 | M | TC-EDT-04 (A) |
@@ -381,7 +398,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-INSP-21 | S | TC-INSP-20 (I) |
 | FR-INSP-22 | S | TC-INSP-21 (I) |
 | FR-INSP-17 | M | TC-INSP-01 (A), TC-INSP-05 (U/A) |
-| FR-SET-01 | M | TC-SET-01 (A) |
+| FR-SET-01 | M | TC-SET-01 (A), TC-TRK-02 (U/A) |
 | FR-SET-02 | M | TC-SET-02 (I) |
 | FR-SET-03 | S | TC-SET-03 (I) |
 | FR-SET-04 | S | TC-SET-04 (I) |
@@ -393,6 +410,15 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | FR-MOOD-03 | M | TC-CAL-10 (M), TC-MOOD-03 (A), TC-MOOD-06 (A/M) |
 | FR-MOOD-04 | M | TC-MOOD-04 (U), TC-MOOD-06 (A/M) |
 | FR-MOOD-05 | M | TC-MOOD-05 (A) |
+| FR-TRK-01 | M | TC-TRK-06 (A), TC-TRK-08 (A) |
+| FR-TRK-02 | M | TC-TRK-02 (U/A), TC-TRK-04 (U/I) |
+| FR-TRK-03 | M | TC-TRK-04 (U/I), TC-NFR-09 (A) |
+| FR-TRK-04 | M | TC-TRK-01 (U), TC-TRK-02 (U/A) |
+| FR-TRK-05 | M | TC-TRK-01 (U), TC-TRK-03 (U) |
+| FR-TRK-06 | M | TC-TRK-03 (U) |
+| FR-TRK-07 | M | TC-TRK-05 (U) |
+| FR-TRK-08 | M | TC-TRK-06 (A), TC-TRK-08 (A), TC-TRK-09 (M) |
+| FR-TRK-09 | M | TC-TRK-07 (A), TC-TRK-09 (M) |
 | NFR-SEC-01 | M | TC-NFR-01 (I), TC-NFR-02 (I) |
 | NFR-SEC-02 | M | TC-NFR-03 (I) |
 | NFR-SEC-03 | M | TC-NFR-04 (I), TC-NFR-05 (I) |
@@ -411,7 +437,7 @@ Integration tests run against a fixture vault: Oct 13 (tab *family*: "Planted th
 | NFR-PERF-05 | M | TC-ATT-08 (I) |
 | NFR-USE-01 | S | TC-NFR-17 (M) |
 | NFR-USE-03 | S | TC-SEC-24 (M), TC-SEC-25 (A/I) |
-| NFR-USE-02 | M | TC-NFR-18 (M), TC-NFR-24 (A) |
+| NFR-USE-02 | M | TC-NFR-18 (M), TC-NFR-24 (A), TC-TRK-08 (A) |
 | NFR-COMP-01 | M | TC-NFR-19 (M) |
 | NFR-MNT-01 | M | TC-NFR-20 (U) |
 | NFR-MNT-02 | M | TC-NFR-21 (I) |

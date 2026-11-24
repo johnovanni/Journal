@@ -46,6 +46,29 @@ public static class JournalJson
 
     public static string SerializeDocument(JournalDocument doc) => JsonSerializer.Serialize(doc, Options);
 
+    /// <summary>
+    /// Settings that leave out each block's id. The editor gives paragraphs new ids every time it reads them back,
+    /// so comparing with the ids would always find a change (ISS-026).
+    /// </summary>
+    private static readonly JsonSerializerOptions ContentOptions = new(Options)
+    {
+        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver
+        {
+            Modifiers =
+            {
+                info =>
+                {
+                    if (!typeof(DocBlock).IsAssignableFrom(info.Type)) return;
+                    foreach (var p in info.Properties.Where(p => p.Name == "id").ToList()) info.Properties.Remove(p);
+                },
+            },
+        },
+    };
+
+    /// <summary>True when the two documents hold the same content, whatever their blocks' ids.</summary>
+    public static bool SameContent(JournalDocument a, JournalDocument b) =>
+        JsonSerializer.Serialize(a, ContentOptions) == JsonSerializer.Serialize(b, ContentOptions);
+
     public static JournalDocument DeserializeDocument(string json) =>
         JsonSerializer.Deserialize<JournalDocument>(json, Options) ?? new JournalDocument();
 

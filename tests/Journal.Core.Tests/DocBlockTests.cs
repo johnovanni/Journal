@@ -50,4 +50,24 @@ public class DocBlockTests
         foreach (var b in new DocBlock[] { new ParagraphBlock(), new ImageBlock { Image = Photo }, new AttachmentBlock { File = Sheet } }) b.Accept(v);
         Assert.Equal(["p", "img", "file"], v.Seen);
     }
+
+    [Fact(DisplayName = "TC-ENT-10 Documents compare by content, not by their blocks' ids")]
+    public void SameContentIgnoresIds()
+    {
+        JournalDocument Make(bool ticked = false, string caption = "c") => new([
+            ParagraphBlock.OfText("words"),
+            new ParagraphBlock(new TextRun("task")) { List = ListKind.Checklist, IsChecked = ticked },
+            new ImageBlock { Image = Photo, Caption = caption },
+        ]);
+
+        var a = Make();
+        var b = Make();
+        Assert.NotEqual(a.Blocks[0].Id, b.Blocks[0].Id);
+        Assert.True(Persistence.JournalJson.SameContent(a, b));
+        Assert.False(Persistence.JournalJson.SameContent(a, Make(ticked: true)));
+        Assert.False(Persistence.JournalJson.SameContent(a, Make(caption: "other")));
+        Assert.False(Persistence.JournalJson.SameContent(a, new JournalDocument(a.Blocks.Take(2))));
+        // Saved files still keep the ids.
+        Assert.Contains(a.Blocks[0].Id.ToString(), Persistence.JournalJson.SerializeDocument(a));
+    }
 }

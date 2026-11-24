@@ -15,6 +15,11 @@ public sealed class AppSettings
     public int AutoLockMinutes { get; set; } = 10;
     public DayOfWeek WeekStart { get; set; } = DayOfWeek.Sunday;
     public bool AttachmentNoticeShown { get; set; }
+    /// <summary>
+    /// Tracked values are turned on (FR-TRK-01). Only this switch is kept here; the measures' names are journal
+    /// content and stay in the vault (FR-TRK-03, NFR-SEC-07).
+    /// </summary>
+    public bool TrackValues { get; set; }
     public InspirationOptions Inspiration { get; set; } = new();
 
     public TimeSpan? AutoLockTimeout =>

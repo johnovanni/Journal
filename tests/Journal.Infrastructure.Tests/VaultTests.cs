@@ -219,6 +219,24 @@ public class VaultTests
         Assert.Equal(Mood.Happy, (await v.Journal.OpenDayAsync(TestData.Today)).Entry!.Mood);
     }
 
+    [Fact(DisplayName = "TC-TRK-04 Tracked-value measures are stored encrypted in the vault and survive reopening")]
+    public async Task MeasuresEncrypted()
+    {
+        const string marker = "ZZQX-PULSE";
+        await using var v = await TempVault.CreateAsync();
+        var e = (await v.Journal.OpenDayAsync(TestData.Today)).Entry!;
+        e.DefaultTab.Document.Blocks.Add(ParagraphBlock.OfText($"##{marker}=61"));
+        await v.Journal.SaveAsync(e);
+        await v.Journal.Tracking.SaveMeasuresAsync([new Journal.Core.Tracking.Measure(marker, "bpm", Journal.Core.Tracking.MeasurePeriod.Monthly, true)]);
+        Assert.False(v.ContainsPlaintext(marker));
+        Assert.False(v.ContainsPlaintext("bpm"));
+
+        await v.ReopenAsync();
+        var measure = Assert.Single(v.Journal.Tracking.Measures);
+        Assert.Equal((marker, "bpm", Journal.Core.Tracking.MeasurePeriod.Monthly, true), (measure.Name, measure.Unit, measure.Period, measure.ShowOnMain));
+        Assert.Equal([61.0], v.Journal.Tracking.Series(measure, DayOfWeek.Sunday).Select(p => p.Value.First));
+    }
+
     [Fact(DisplayName = "TC-NFR-03 The raw data key never appears on disk")]
     public async Task DataKeyNotOnDisk()
     {

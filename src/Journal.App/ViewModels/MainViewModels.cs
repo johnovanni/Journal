@@ -11,7 +11,8 @@ namespace Journal.App.ViewModels;
 
 public sealed partial class DayCellViewModel(DateOnly date) : ObservableObject
 {
-    public DateOnly Date { get; } = date;
+    /// <summary>The cell's day. Cells are reused when the month changes (ISS-026), so the date can change.</summary>
+    [ObservableProperty] private DateOnly _date = date;
     public int DayNumber => Date.Day;
     public string AutomationName => Date.ToString("D", CultureInfo.CurrentCulture) + (HasEntry ? ", has an entry" : "") +
                                     (Mood == Mood.None ? "" : $", {Mood.ToString().ToLowerInvariant()} day");
@@ -26,6 +27,8 @@ public sealed partial class DayCellViewModel(DateOnly date) : ObservableObject
     [ObservableProperty] private Mood _mood;
 
     public bool IsPlanned => IsFuture && HasEntry;
+
+    partial void OnDateChanged(DateOnly value) { OnPropertyChanged(nameof(DayNumber)); OnPropertyChanged(nameof(AutomationName)); }
 
     partial void OnMoodChanged(Mood value) => OnPropertyChanged(nameof(AutomationName));
 
@@ -87,22 +90,32 @@ public sealed partial class CalendarViewModel : ObservableObject
         var (entries, open) = _dates(grid[0], grid[^1]);
         var moods = _moods(grid[0], grid[^1]);
         var today = _clock.Today;
-        WeekdayNames.Clear();
-        foreach (var dow in MonthGrid.WeekdayOrder(WeekStart))
-            WeekdayNames.Add(CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames[(int)dow][..2]);
-        Days.Clear();
-        foreach (var date in grid)
+        var names = MonthGrid.WeekdayOrder(WeekStart)
+            .Select(dow => CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames[(int)dow][..2]).ToList();
+        if (!WeekdayNames.SequenceEqual(names))
         {
-            Days.Add(new DayCellViewModel(date)
-            {
-                IsInCurrentMonth = date.Month == Month,
-                IsToday = date == today,
-                HasEntry = entries.Contains(date),
-                IsFuture = date > today,
-                HasOpenItems = open.Contains(date),
-                IsSelected = date == SelectedDate,
-                Mood = moods.GetValueOrDefault(date),
-            });
+            WeekdayNames.Clear();
+            foreach (var n in names) WeekdayNames.Add(n);
+        }
+        // Update the existing cells rather than replacing them: building 42 new cells on every change of month or
+        // save made switching days slow (ISS-026).
+        if (Days.Count != grid.Count)
+        {
+            Days.Clear();
+            foreach (var date in grid) Days.Add(new DayCellViewModel(date));
+        }
+        for (int i = 0; i < grid.Count; i++)
+        {
+            var date = grid[i];
+            var cell = Days[i];
+            cell.Date = date;
+            cell.IsInCurrentMonth = date.Month == Month;
+            cell.IsToday = date == today;
+            cell.HasEntry = entries.Contains(date);
+            cell.IsFuture = date > today;
+            cell.HasOpenItems = open.Contains(date);
+            cell.IsSelected = date == SelectedDate;
+            cell.Mood = moods.GetValueOrDefault(date);
         }
     }
 
@@ -307,6 +320,8 @@ public sealed partial class MainViewModel : ObservableObject
     public CalendarViewModel Calendar { get; }
     public SearchViewModel Search { get; }
     public MoodSummaryViewModel Moods { get; } = new();
+    /// <summary>Tracked values below MOODS (ISS-030).</summary>
+    public TrackedValuesViewModel Tracked { get; }
 
     [ObservableProperty] private EntryViewModel? _currentEntry;
     [ObservableProperty] private string _statusText = "";
@@ -314,6 +329,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     public event EventHandler? LockRequested;
     public event EventHandler? SettingsRequested;
+    /// <summary>Asks the window to open the Graphs window, at a measure or at the top (FR-TRK-09).</summary>
+    public event EventHandler<Journal.Core.Tracking.Measure?>? GraphsRequested;
 
     public MainViewModel(JournalContext ctx)
     {
@@ -325,13 +342,29 @@ public sealed partial class MainViewModel : ObservableObject
         Search = new SearchViewModel(() => ctx.Journal.Search, ctx.Journal.AllTags, ctx.Scheduler);
         Calendar.DateSelected += async (_, d) => await SelectDateAsync(d);
         Search.ResultOpened += async (_, hit) => await SelectDateAsync(hit.Date, hit.TabId);
+        Tracked = new TrackedValuesViewModel(ctx.Journal, ctx.Settings);
+        Tracked.GraphsRequested += (_, m) => GraphsRequested?.Invoke(this, m);
         ctx.Journal.EntryChanged += (_, _) =>
         {
             Calendar.Refresh();
             Search.RefreshIfActive();
             Moods.Update(ctx.Journal.GetMoodSummary());
+            Tracked.Refresh();
         };
+        ctx.Journal.Tracking.MeasuresChanged += (_, _) => Tracked.Refresh();
         Moods.Update(ctx.Journal.GetMoodSummary());
+        Tracked.Refresh();
+    }
+
+    /// <summary>The Graphs window's view model; clicking a point opens that day here.</summary>
+    public GraphsViewModel CreateGraphs(Journal.Core.Tracking.Measure? focus) =>
+        new(_ctx.Journal, _ctx.Settings, d => SelectDateAsync(d), focus);
+
+    /// <summary>Settings changed: the week start or the tracked-values switch may have changed.</summary>
+    public void SettingsApplied(Journal.Core.Settings.AppSettings settings)
+    {
+        Calendar.WeekStart = settings.WeekStart;
+        Tracked.Refresh();
     }
 
     public Task InitializeAsync() => SelectDateAsync(_ctx.Clock.Today);
@@ -379,6 +412,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenSettings() => SettingsRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    private void OpenGraphs() => GraphsRequested?.Invoke(this, null);
 
     [RelayCommand]
     private async Task DeleteEntry()

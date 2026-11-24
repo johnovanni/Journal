@@ -7,6 +7,7 @@ using Journal.Core.Domain;
 using Journal.Core.Inspiration;
 using Journal.Core.Security;
 using Journal.Core.Settings;
+using Journal.Core.Tracking;
 
 namespace Journal.App.ViewModels;
 
@@ -44,6 +45,34 @@ public sealed partial class VerseTraditionSection(string name, IReadOnlyList<str
     public bool HasBooks => Books.Count > 1;
 }
 
+/// <summary>One tracked value in Settings (FR-TRK-02).</summary>
+public sealed partial class MeasureRowViewModel : ObservableObject
+{
+    private readonly Func<MeasureRowViewModel, bool> _canShowOnMain;
+
+    public MeasureRowViewModel(Measure measure, Func<MeasureRowViewModel, bool> canShowOnMain)
+    {
+        _canShowOnMain = canShowOnMain;
+        _name = measure.Name;
+        _unit = measure.Unit;
+        _period = measure.Period;
+        _showOnMain = measure.ShowOnMain;
+    }
+
+    [ObservableProperty] private string _name;
+    [ObservableProperty] private string _unit;
+    [ObservableProperty] private MeasurePeriod _period;
+    [ObservableProperty] private bool _showOnMain;
+
+    /// <summary>A third tick for the main screen is refused (at most two, FR-TRK-02).</summary>
+    partial void OnShowOnMainChanged(bool value)
+    {
+        if (value && !_canShowOnMain(this)) ShowOnMain = false;
+    }
+
+    public Measure ToMeasure() => new(Name.Trim(), Unit.Trim(), Period, ShowOnMain);
+}
+
 /// <summary>Actions the settings window needs from the running app.</summary>
 public interface ISettingsHost
 {
@@ -60,6 +89,9 @@ public interface ISettingsHost
     Task MoveVaultAsync(string newFolder);
     void ExportBackup(string zipPath);
     Task ApplySettingsAsync(AppSettings settings);
+    /// <summary>The tracked-value measures, kept encrypted in the vault (FR-TRK-02, FR-TRK-03).</summary>
+    IReadOnlyList<Measure> Measures { get; }
+    Task SaveMeasuresAsync(IReadOnlyList<Measure> measures);
 }
 
 /// <summary>Settings window (FR-SET-01, FR-SEC-13, FR-SEC-18, FR-CAL-02, FR-INSP-05..11, FR-INSP-17).</summary>
@@ -85,6 +117,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _useImportedVerses;
     [ObservableProperty] private bool _useImportedQuotes;
     [ObservableProperty] private bool _randomPerDay;
+    /// <summary>Tracked values are turned on (FR-TRK-01).</summary>
+    [ObservableProperty] private bool _trackValues;
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _importedVersesText = "";
     [ObservableProperty] private string _importedQuotesText = "";
@@ -102,6 +136,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     public ObservableCollection<QuoteCategorySection> CategorySections { get; } = [];
     private readonly Dictionary<string, CheckItem> _traditionItems = new(StringComparer.OrdinalIgnoreCase);
     public ObservableCollection<string> HelloMachines { get; } = [];
+
+    /// <summary>The tracked values, in the order the user added them (FR-TRK-02).</summary>
+    public ObservableCollection<MeasureRowViewModel> Measures { get; } = [];
+    public IReadOnlyList<MeasurePeriod> Periods { get; } = [MeasurePeriod.Weekly, MeasurePeriod.Monthly];
     public string ThisMachine => _host.Session.MachineName;
     /// <summary>"Journal 1.1.0" (FR-UI-02).</summary>
     public string VersionText => AppInfo.NameAndVersion;
@@ -120,6 +158,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _useImportedVerses = insp.VerseSource == SourceNames.Imported;
         _useImportedQuotes = insp.QuoteSource == SourceNames.Imported;
         _randomPerDay = insp.Mode == SelectionMode.RandomPerDay;
+        _trackValues = current.TrackValues;
+        foreach (var m in host.Measures) Measures.Add(NewRow(m));
         // Settings from before ISS-012 have no traditions: Christianity only.
         var ticked = insp.VerseTraditions ?? [VerseTraditions.Christianity];
         foreach (var t in host.VerseTraditions)
@@ -157,10 +197,29 @@ public sealed partial class SettingsViewModel : ObservableObject
         ImportedQuotesText = _host.ImportedQuoteCount == 0 ? "No quotes imported" : $"{_host.ImportedQuoteCount} imported quotes";
     }
 
+    private MeasureRowViewModel NewRow(Measure m) => new(m, CanShowOnMain);
+
+    private bool CanShowOnMain(MeasureRowViewModel row)
+    {
+        if (Measures.Count(r => r.ShowOnMain && r != row) < Measure.MaxOnMain) return true;
+        Status = $"At most {Measure.MaxOnMain} tracked values can be shown on the main screen. Untick one first.";
+        return false;
+    }
+
+    [RelayCommand]
+    private void AddMeasure() => Measures.Add(NewRow(new Measure("")));
+
+    [RelayCommand]
+    private void RemoveMeasure(MeasureRowViewModel? row)
+    {
+        if (row is not null) Measures.Remove(row);
+    }
+
     /// <summary>Builds the settings to save from the current form state.</summary>
     public AppSettings BuildSettings()
     {
         _settings.AutoLockMinutes = AutoLock.Minutes;
+        _settings.TrackValues = TrackValues;
         _settings.WeekStart = WeekStart;
         _settings.Inspiration = new InspirationOptions
         {
@@ -181,6 +240,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task Save()
     {
+        // The measures are checked first, so a bad name saves nothing (FR-TRK-02).
+        var measures = Measures.Select(r => r.ToMeasure()).ToList();
+        if (TrackingService.Problem(measures) is { } problem)
+        {
+            _dialogs.Error("Tracked values", problem);
+            return;
+        }
+        if (!measures.SequenceEqual(_host.Measures)) await _host.SaveMeasuresAsync(measures);
         await _host.ApplySettingsAsync(BuildSettings());
         Status = "Settings saved.";
     }

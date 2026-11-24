@@ -166,6 +166,63 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <!-- Tracked values (ISS-030). The names are journal content and are saved encrypted in the vault (FR-TRK-03). -->
+            <TabItem Header="Tracked values">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <CheckBox Content="Track values from my journal" IsChecked="{Binding TrackValues}" FontWeight="SemiBold"
+                                      AutomationProperties.Name="Track values from my journal" />
+                            <TextBlock Style="{StaticResource Muted}" FontSize="12" Margin="22,4,0,0" TextWrapping="Wrap"
+                                       Text="Write ##name=value anywhere in a day, such as ##weight=182.4 or ##blood pressure=120/80, or add a tab named after the value with the number at the top. Anything that isn't a number is ignored." />
+                            <StackPanel Margin="22,12,0,0" IsEnabled="{Binding TrackValues}">
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="34" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="NAME" Style="{StaticResource Label}" Margin="0" />
+                                    <TextBlock Grid.Column="1" Text="UNIT" Style="{StaticResource Label}" Margin="8,0,0,0" />
+                                    <TextBlock Grid.Column="2" Text="EVERY" Style="{StaticResource Label}" Margin="8,0,0,0" />
+                                    <TextBlock Grid.Column="3" Text="MAIN SCREEN" Style="{StaticResource Label}" Margin="8,0,0,0" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Measures}" AutomationProperties.Name="Tracked values" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="90" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="110" />
+                                                    <ColumnDefinition Width="34" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Name" MaxLength="40" />
+                                                <TextBox Grid.Column="1" Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0"
+                                                         AutomationProperties.Name="Unit" MaxLength="12" ToolTip="Shown with the value, such as lb or mmHg (optional)" />
+                                                <ComboBox Grid.Column="2" ItemsSource="{Binding DataContext.Periods, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          SelectedItem="{Binding Period}" Margin="8,0,0,0" AutomationProperties.Name="Every" />
+                                                <CheckBox Grid.Column="3" Content="Show" IsChecked="{Binding ShowOnMain}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                          AutomationProperties.Name="Show on the main screen" ToolTip="Show on the main screen, below MOODS (at most two)" />
+                                                <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="10" HorizontalAlignment="Right"
+                                                        Command="{Binding DataContext.RemoveMeasureCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" ToolTip="Remove (your journal text stays as it is)"
+                                                        AutomationProperties.Name="Remove tracked value" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="+ Add a tracked value" Command="{Binding AddMeasureCommand}" HorizontalAlignment="Left" Margin="0,4,0,0" />
+                                <TextBlock Style="{StaticResource Muted}" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"
+                                           Text="Each week or month shows its latest value. Names ignore capitals, so ##Weight and ##weight are the same. Renaming a value only matches lines written with the new name." />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

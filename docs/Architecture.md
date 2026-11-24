@@ -85,11 +85,11 @@ Journal/
 ├─ Journal.sln
 ├─ docs/                         Architecture.md, Requirements.md, TestCases.md
 ├─ src/
-│  ├─ Journal.Core/              Domain, Documents, Calendar, Persistence, Search, Inspiration, Security, Services, Settings
+│  ├─ Journal.Core/              Domain, Documents, Calendar, Persistence, Search, Inspiration, Security, Services, Settings, Tracking
 │  ├─ Journal.Infrastructure/    Crypto, Hello, Storage, Content (embedded verses.json, quotes.json), Logging
 │  └─ Journal.App/               Views, ViewModels, Controls, Editor (FlowDocumentMapper, JournalDocumentEditor), Services, Themes
 └─ tests/
-   ├─ Journal.Core.Tests/            xUnit: domain, document model, search, inspiration, session, moods
+   ├─ Journal.Core.Tests/            xUnit: domain, document model, search, inspiration, session, moods, tracked values
    ├─ Journal.Infrastructure.Tests/  xUnit: crypto round trips, tamper detection, file vault, recovery code, content
    └─ Journal.App.Tests/             xUnit (STA): mapper round trips, view models with fakes, editor and clipboard,
                                      real windows shown off screen (layout), locking and exit
@@ -135,6 +135,8 @@ Journal/
 **Editor.** A `RichTextBox` with a small toolbar: font family, font size, text color, highlight color, bold, italic, underline, strikethrough, Heading 1, Heading 2, bulleted list, numbered list, checklist, Insert Image (file picker, paste from clipboard or drag-drop) and Attach File. Lists can be indented (Tab / Shift+Tab, up to 4 levels). A checklist item shows a checkbox you can tick with the mouse or Ctrl+Enter; ticked items are shown with strikethrough. The font list is the fonts installed in Windows; colors come from a 16-swatch palette plus a custom picker. Images are placed on their own line between paragraphs at the caret, with an editable caption beneath. Attached files appear as a chip showing the name, size and description; double-click opens it, right-click offers *Save As*, *Edit description* and *Remove*. Copy, cut, paste and drag within the journal keep all of this (§9).
 
 **Mood.** Three faces beside the day's heading set the day's mood; clicking the chosen face again clears it (§8.1a).
+
+**Tracked values.** When turned on in Settings, a card below MOODS shows up to two tracked values (such as weight) with their latest value and a small graph, and a *Graphs* button beside *Settings* opens every value's graph (§8.1b).
 
 **Version.** Settings → General and the unlock window show the app's name and version.
 
@@ -788,6 +790,14 @@ Matching is case- and accent-insensitive, terms are combined with AND, and a ter
 
 Each day up to today can be marked sad, neutral or happy with three faces next to the day's heading. The mood is part of the encrypted entry (`JournalEntry.Mood`) and is copied into the encrypted catalog (`CatalogEntry.Mood`), so the calendar can tint days (light red for sad, light green for happy, with a small face on every marked day) and the summary under the calendar can count the last 30 days and the last 12 months without opening every entry. Both periods end today and include today (`MoodSummary`). Days with no mood aren't counted. Choosing a face saves at once. Moods aren't part of search.
 
+### 8.1b Tracked values (ISS-030)
+
+The user names the values to track in Settings → Tracked values (`Measure`: name, optional unit, weekly or monthly, and whether it shows on the main screen; at most two do). The list is journal content, so it is saved encrypted in the vault next to the imported lists (`lists/measures.jlist`, through `IMeasureStore`), and only the on/off switch goes in the settings file (FR-TRK-03).
+
+Values aren't stored separately. `TrackingService` reads them from the encrypted catalog, which already holds each tab's text and tag for search: `ValueReader` finds `##name=value` anywhere in a tab, and the first number in a tab whose tag is a value's name (FR-TRK-04). So days written before a value was set up count at once, and renaming a value needs no rewrite. Readings are cached per catalog entry and read again only when that day's catalog entry changes, so a save costs one day's text. `Series` groups the readings into weeks (from the calendar's first day of the week) or months, keeping the latest day's value in each period and ignoring days after today (FR-TRK-06).
+
+On the main window, `TrackedValuesViewModel` shows the values ticked for the main screen in one card below MOODS, each with a small `LineChart`. The window measures the space the calendar, MOODS and the search box leave in the column after each layout: the card shows graphs if they fit, one line per value if that fits, and nothing otherwise; it also steps aside while a search is showing, so results keep the column (FR-TRK-08, NFR-USE-02). The Graphs window (`GraphsViewModel`) shows every value over 3 months, 1 year or all, with a table of values; clicking a point or a date opens that day. It is owned by the main window, so it closes when the journal locks. `LineChart` draws with WPF shapes; no charting package is used.
+
 ### 8.2 Daily verse and quote options
 
 The verse card's label is the passage's scripture in capitals ("BIBLE", "QURAN", "TAO TE CHING"; FR-INSP-19). Each built-in passage in `verses.json` records its tradition, scripture, book and translation; a row without a tradition is a World English Bible verse, and a day saved before ISS-012 shows "BIBLE". Settings has a section per tradition, Christianity first, and only Christianity is ticked until the user ticks others. With several ticked, the day first picks a tradition evenly and then a passage within it, so the Bible's 477 verses don't crowd out the rest; by day of year the days cycle through the ticked traditions (FR-INSP-20). With only Christianity ticked the choice is exactly what it was before. Book choices are saved as "Tradition/Book", since the Bible and the Hebrew Bible share book names; a plain book name, as saved before ISS-012, is a Bible book.
@@ -818,11 +828,13 @@ classDiagram
         +CalendarViewModel Calendar
         +SearchViewModel Search
         +MoodSummaryViewModel Moods
+        +TrackedValuesViewModel Tracked
         +EntryViewModel? CurrentEntry
         +string StatusText
         +string LockText
         +IRelayCommand LockCommand
         +IRelayCommand OpenSettingsCommand
+        +IRelayCommand OpenGraphsCommand
         +IAsyncRelayCommand DeleteEntryCommand
         +Task SelectDateAsync(DateOnly d, Guid? tabId)
         +Task FlushAsync()
@@ -1044,9 +1056,11 @@ classDiagram
 
 **Blocks and their editor.** WPF re-creates embedded controls from XAML on undo, so they can't be wired up one by one. Blocks raise routed events (`BlockEvents`) that bubble to the editor holding them, including an image asking for its bitmap (`ImageLoadEvent`), which the editor answers from its open tab. Each editor therefore hears only its own blocks, and a closed day gives no answer, so nothing can load after a lock (ISS-019).
 
+**One editor for every day and tab.** The tab control shows only the tab headers; a single `JournalEditor` below it shows the selected tab and is handed the next tab or day when the selection changes. Building a new editor (toolbar, font list, text box) on every switch took about 300 ms (ISS-026). When the user leaves a day, `EntryViewModel` compares the documents read back from the editor with the ones it opened, ignoring block ids (`JournalJson.SameContent`), because the editor gives paragraphs new ids each time it reads them. Only a real change saves, so looking at a day never rewrites it (FR-ENT-10).
+
 **Copy and paste.** WPF's copy leaves out embedded controls and the journal's heading marker. So `JournalDocumentEditor` also puts the selection on the clipboard in the journal's own format (`JournalClipboard.Format`, the document model as JSON) and reads it back on paste and drop, as one undo step. Pasted images and files refer to the same vault file, so cutting and pasting never loses them. Other apps get the standard formats, with checklist lines as ☐ and ☑ (ISS-010).
 
-**Calendar highlighting.** `CalendarViewModel.Refresh` gets the dates that have entries, the dates with open items and the moods from the catalog, and sets them on each of the 42 cells. The control styles `HasEntry` with a filled accent background, `IsToday` with a ring, `IsSelected` with a bold outline, and days outside the month in a muted color. A future day with an entry (`IsFuture && HasEntry`) gets a dashed outline so planned days stand out, and a small dot marks days with open checklist items. A day with a mood is tinted instead of highlighted (light red for sad, light green for happy, normal background for neutral) and shows a small face, so the mood doesn't depend on colour. Saving or deleting an entry raises `JournalService.EntryChanged`, which refreshes the month and the mood counts.
+**Calendar highlighting.** `CalendarViewModel.Refresh` gets the dates that have entries, the dates with open items and the moods from the catalog, and sets them on each of the 42 cells. The cells are kept and updated, not rebuilt, when the month changes or a day is saved (ISS-026). The control styles `HasEntry` with a filled accent background, `IsToday` with a ring, `IsSelected` with a bold outline, and days outside the month in a muted color. A future day with an entry (`IsFuture && HasEntry`) gets a dashed outline so planned days stand out, and a small dot marks days with open checklist items. A day with a mood is tinted instead of highlighted (light red for sad, light green for happy, normal background for neutral) and shows a small face, so the mood doesn't depend on colour. Saving or deleting an entry raises `JournalService.EntryChanged`, which refreshes the month and the mood counts.
 
 **Locking and exiting.** `LockCoordinator` is the one place that decides when to lock:
 
@@ -1113,7 +1127,7 @@ Crypto uses only built-in .NET (`AesGcm`, `HKDF`, `Rfc2898DeriveBytes.Pbkdf2`, `
 |---|---|---|
 | Losing both the PC's Windows Hello key and the recovery code | Journal is unrecoverable (by design, nobody else can open it either) | Setup requires you to confirm part of the recovery code before continuing; Settings can show reminders and regenerate the code while unlocked. |
 | Windows Hello prompt opening behind the WPF window | Confusing unlock | Allow the dialog to the foreground before the call, and say how to find it while it waits (§6.5, ISS-023). Windows gives no way to place the key-signing dialog. |
-| Switching days is slower than NFR-PERF-02 asks | About 1.1 s against 300 ms for text, 1.3 s against 1 s with images (TC-NFR-14) | Logged as ISS-026: part of it is an unneeded save on every switch. |
+| Switching days slows down again | NFR-PERF-02 asks for 300 ms for text and 1 s with 10 images | Fixed by ISS-026 (98 ms and 417 ms on 2026-11-24): no save when nothing changed, one editor kept, calendar cells reused. TC-NFR-14 measures it before each release. |
 | A slow save when the PC sleeps | The wait stops at 5 seconds, so the PC may sleep before the journal has locked | Normally about 0.1 second; past the limit it is logged, and the lock finishes on waking (ISS-024). |
 | Very large attachments | Memory and save time | Streamed, chunked encryption; 250 MB limit per file. |
 | `RichTextBox` quirks with embedded controls (undo, copy/paste of image blocks) | Lost captions or images on paste | The journal's own clipboard format (§9, ISS-010); covered by automated copy-and-paste tests. |

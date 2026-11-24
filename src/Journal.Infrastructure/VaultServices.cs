@@ -40,7 +40,7 @@ public sealed class VaultServices : IDisposable
             [new EmbeddedVerseSource(), new ListVerseSource(SourceNames.Imported, () => _importedVerses)],
             [new EmbeddedQuoteSource(), new ListQuoteSource(SourceNames.Imported, () => _importedQuotes)]);
         Journal = new JournalService(Entries, Blobs, new FileCatalogStore(paths, crypto, writer), new InMemorySearchIndex(),
-            inspiration, clock, settings, crypto.VaultId);
+            inspiration, clock, settings, crypto.VaultId, UserLists);
     }
 
     public static async Task<VaultServices> OpenAsync(VaultSession session, string vaultFolder, IClock clock,

@@ -4,6 +4,7 @@ using Journal.Core.Documents;
 using Journal.Core.Domain;
 using Journal.Core.Persistence;
 using Journal.Core.Security;
+using Journal.Core.Tracking;
 using Journal.Infrastructure.Crypto;
 
 namespace Journal.Infrastructure.Storage;
@@ -308,8 +309,10 @@ public sealed class FileCatalogStore(VaultPaths paths, VaultCrypto crypto, Atomi
     }
 }
 
-/// <summary>Imported verse and quote lists, encrypted inside the vault (FR-INSP-11).</summary>
-public sealed class FileUserListStore(VaultPaths paths, VaultCrypto crypto, AtomicFileWriter writer) : IUserListStore
+/// <summary>
+/// Imported verse and quote lists (FR-INSP-11) and the tracked-value measures (FR-TRK-03), encrypted inside the vault.
+/// </summary>
+public sealed class FileUserListStore(VaultPaths paths, VaultCrypto crypto, AtomicFileWriter writer) : IUserListStore, IMeasureStore
 {
     private sealed class ListDto<T>
     {
@@ -321,6 +324,8 @@ public sealed class FileUserListStore(VaultPaths paths, VaultCrypto crypto, Atom
     public Task SaveVersesAsync(IReadOnlyList<Verse> verses, CancellationToken ct = default) => SaveAsync("verses", verses, ct);
     public Task<IReadOnlyList<Quote>> LoadQuotesAsync(CancellationToken ct = default) => LoadAsync<Quote>("quotes", ct);
     public Task SaveQuotesAsync(IReadOnlyList<Quote> quotes, CancellationToken ct = default) => SaveAsync("quotes", quotes, ct);
+    public Task<IReadOnlyList<Measure>> LoadMeasuresAsync(CancellationToken ct = default) => LoadAsync<Measure>("measures", ct);
+    public Task SaveMeasuresAsync(IReadOnlyList<Measure> measures, CancellationToken ct = default) => SaveAsync("measures", measures, ct);
 
     private string PathFor(string name) => Path.Combine(paths.Lists, name + ".jlist");
 

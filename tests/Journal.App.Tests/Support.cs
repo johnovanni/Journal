@@ -195,4 +195,12 @@ public sealed class FakeSettingsHost(VaultSession session) : ISettingsHost
         Applied = settings;
         return Task.CompletedTask;
     }
+    public IReadOnlyList<Journal.Core.Tracking.Measure> Measures { get; set; } = [];
+    public int MeasureSaves { get; private set; }
+    public Task SaveMeasuresAsync(IReadOnlyList<Journal.Core.Tracking.Measure> measures)
+    {
+        Measures = measures;
+        MeasureSaves++;
+        return Task.CompletedTask;
+    }
 }

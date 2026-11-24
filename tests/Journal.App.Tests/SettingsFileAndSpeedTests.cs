@@ -71,7 +71,9 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
         entry.AddTag(Tag.Parse($"tag{marker}"));
         entry.AddTab(Tag.Parse($"tab{marker}")).Document.Blocks.Add(ParagraphBlock.OfText($"tab text {marker}"));
         entry.SetMood(Mood.Happy, clock.Today);
+        entry.DefaultTab.Document.Blocks.Add(ParagraphBlock.OfText($"##{marker}=5"));
         await services.Journal.SaveAsync(entry);
+        await services.Journal.Tracking.SaveMeasuresAsync([new Journal.Core.Tracking.Measure($"value{marker}", $"unit{marker}", ShowOnMain: true)]);
 
         // Settings saved the way the app saves them, after importing lists and ticking everything on offer.
         var settingsPath = Path.Combine(NewFolder(), "settings.json");
@@ -86,7 +88,7 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
         await actions.ImportVersesAsync(verses);
         await actions.ImportQuotesAsync(quotes);
 
-        var vm = new SettingsViewModel(actions, new FakeDialogs(), new AppSettings { VaultFolder = folder }) { UseImportedQuotes = true, UseImportedVerses = true };
+        var vm = new SettingsViewModel(actions, new FakeDialogs(), new AppSettings { VaultFolder = folder }) { UseImportedQuotes = true, UseImportedVerses = true, TrackValues = true };
         foreach (var section in vm.VerseSections)
         {
             section.IsIncluded = true;
@@ -102,7 +104,8 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
 
         // A new setting must be a deliberate choice: check this list against NFR-SEC-07 before adding to it.
         using var doc = JsonDocument.Parse(saved);
-        Assert.Equal(["attachmentNoticeShown", "autoLockMinutes", "formatVersion", "inspiration", "vaultFolder", "weekStart"],
+        Assert.Contains("\"trackValues\":true", saved.Replace(" ", ""));   // only the switch; the measures stay in the vault (FR-TRK-03)
+        Assert.Equal(["attachmentNoticeShown", "autoLockMinutes", "formatVersion", "inspiration", "trackValues", "vaultFolder", "weekStart"],
             doc.RootElement.EnumerateObject().Select(p => p.Name).Where(n => n != "autoLockTimeout").Order(StringComparer.Ordinal));
         Assert.Equal(["hiddenCategories", "mode", "quoteSource", "showQuote", "showVerse", "traditions", "verseBooks", "verseSource", "verseTraditions"],
             doc.RootElement.GetProperty("inspiration").EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
@@ -185,18 +188,28 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
             var text = new List<double>();
             var pictures = new List<double>();
             var shown = new List<int>();
+            // The clock stops once the new day has been laid out and drawn. Waiting for the window to go fully idle
+            // (AppThread.Settle) adds 70-100 ms even when nothing is left to do, so that wait is reported, not timed (ISS-026).
+            async Task Drawn()
+            {
+                window.UpdateLayout();
+                await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+            }
+            var settled = new List<double>();
             for (int r = 0; r < rounds; r++)
             {
                 var sw = Stopwatch.StartNew();
                 await vm.SelectDateAsync(start.AddDays(2000 + r));
                 var selected = sw.Elapsed.TotalMilliseconds;
-                await AppThread.Settle();
+                await Drawn();
                 text.Add(sw.Elapsed.TotalMilliseconds);
                 breakdown.Add($"{selected:0}+{sw.Elapsed.TotalMilliseconds - selected:0}");
+                await AppThread.Settle();
+                settled.Add(sw.Elapsed.TotalMilliseconds);
 
                 sw.Restart();
                 await vm.SelectDateAsync(imageDays[r]);
-                await AppThread.Settle();
+                await Drawn();
                 var editor = AppThread.FindChild<JournalEditor>(window)!;
                 var views = editor.TextBox.Document.Blocks.OfType<BlockUIContainer>().Select(b => b.Child).OfType<ImageBlockView>().ToList();
                 Assert.Equal(10, views.Count);
@@ -204,10 +217,11 @@ public class SettingsFileAndSpeedTests(ITestOutputHelper output)
                     await Task.Delay(5);
                 pictures.Add(sw.Elapsed.TotalMilliseconds);
                 shown.Add(views.Count(v => v.LoadedSource is not null));
+                await AppThread.Settle();
             }
 
             double textMedian = text.Order().ElementAt(rounds / 2), picturesMedian = pictures.Order().ElementAt(rounds / 2);
-            output.WriteLine($"text-only ms: {string.Join(", ", text.Select(t => t.ToString("0")))}; median {textMedian:0}; open+show: {string.Join(", ", breakdown)}; saves during the run: {saves}");
+            output.WriteLine($"text-only ms: {string.Join(", ", text.Select(t => t.ToString("0")))}; median {textMedian:0}; open+show: {string.Join(", ", breakdown)}; saves during the run: {saves}; with the idle wait: {string.Join(", ", settled.Select(t => t.ToString("0")))}");
             output.WriteLine($"10 images ms: {string.Join(", ", pictures.Select(t => t.ToString("0")))}; median {picturesMedian:0}; loaded {string.Join(",", shown)}");
             Assert.All(shown, n => Assert.Equal(10, n));
             Assert.True(textMedian <= 300, $"text-only median {textMedian:0} ms");

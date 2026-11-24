@@ -19,6 +19,27 @@ public partial class MainWindow : Window
         RunNowCommand = new RelayCommand(() => vm.Search.Run());
         InitializeComponent();
         SizeChanged += (_, _) => FitInspirationToWindow();
+        vm.GraphsRequested += (_, measure) => ShowGraphs(measure);
+        // Cheap, and settles at once: the space measured doesn't include the card itself.
+        LayoutUpdated += (_, _) => FitTrackedValues();
+    }
+
+    private GraphsWindow? _graphs;
+
+    /// <summary>Opens the Graphs window, or brings it forward, at the measure clicked (FR-TRK-09).</summary>
+    public GraphsWindow ShowGraphs(Journal.Core.Tracking.Measure? measure)
+    {
+        if (_graphs is { IsLoaded: true } open)
+        {
+            open.Vm.Focus = measure;
+            open.Activate();
+            open.ScrollToFocus();
+            return open;
+        }
+        _graphs = new GraphsWindow(Vm.CreateGraphs(measure)) { Owner = this };
+        _graphs.Closed += (_, _) => _graphs = null;
+        _graphs.Show();
+        return _graphs;
     }
 
     /// <summary>Window height below which the verse and quote show five lines instead of seven.</summary>
@@ -31,6 +52,18 @@ public partial class MainWindow : Window
         var cap = ActualHeight < ShortWindowHeight ? ShortInspirationTextHeight : (double)FindResource("InspirationTextMaxHeight");
         VerseScroller.MaxHeight = cap;
         QuoteScroller.MaxHeight = cap;
+    }
+
+    /// <summary>
+    /// Tracked values get the space the calendar, MOODS and search leave in the left column: with small graphs, one
+    /// line each, or hidden, so the search results always keep room (FR-TRK-08, NFR-USE-02).
+    /// </summary>
+    private void FitTrackedValues()
+    {
+        if (DataContext is not MainViewModel vm) return;
+        static double Height(FrameworkElement e) => e.IsVisible ? e.ActualHeight + e.Margin.Top + e.Margin.Bottom : 0;
+        var spare = LeftColumn.ActualHeight - Height(CalendarView) - Height(MoodsCard) - Height(SearchPanel);
+        vm.Tracked.FitTo(spare, searching: vm.Search.QueryText.Trim().Length > 0);
     }
 
     public ICommand FocusSearchCommand { get; }

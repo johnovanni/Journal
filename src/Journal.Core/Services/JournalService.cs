@@ -3,6 +3,7 @@ using Journal.Core.Domain;
 using Journal.Core.Inspiration;
 using Journal.Core.Persistence;
 using Journal.Core.Search;
+using Journal.Core.Tracking;
 
 namespace Journal.Core.Services;
 
@@ -39,6 +40,8 @@ public sealed class JournalService
     public Catalog Catalog { get; private set; } = new();
     public SearchService Search { get; }
     public DailyInspirationService Inspiration => _inspiration;
+    /// <summary>Tracked values read from the journal (ISS-030).</summary>
+    public TrackingService Tracking { get; }
 
     public event EventHandler<EntryChangedEventArgs>? EntryChanged;
 
@@ -50,7 +53,8 @@ public sealed class JournalService
         DailyInspirationService inspiration,
         IClock clock,
         Func<InspirationSettings> inspirationSettings,
-        Guid vaultId)
+        Guid vaultId,
+        IMeasureStore? measures = null)
     {
         _entries = entries;
         _blobs = blobs;
@@ -60,6 +64,7 @@ public sealed class JournalService
         _inspirationSettings = inspirationSettings;
         VaultId = vaultId;
         Search = new SearchService(new SearchQueryParser(clock), index);
+        Tracking = new TrackingService(measures ?? new MemoryMeasureStore(), () => Catalog, clock);
     }
 
     /// <summary>Loads (or rebuilds) the catalog, builds the search index and removes orphaned blobs.</summary>
@@ -83,6 +88,7 @@ public sealed class JournalService
         }
         Catalog = catalog;
         Search.Index.Rebuild(catalog);
+        await Tracking.LoadAsync(ct);
         int collected = await CollectGarbageAsync([], ct);
         return new InitializeResult(rebuilt, unreadable, collected);
     }

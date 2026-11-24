@@ -55,6 +55,7 @@
 | FR-ENT-07 | An entry whose tabs contain no text, images or files and that has no extra tags shall not be stored; if it was stored before, it shall be deleted. | M |
 | FR-ENT-08 | The user shall be able to delete a day's entry after confirming; the entry and its images and files shall be removed from the vault. | M |
 | FR-ENT-09 | If an entry file cannot be decrypted or read, the app shall show an error for that day only, keep the file untouched, and keep every other day usable. | M |
+| FR-ENT-10 | Opening a day and leaving it without changing anything shall not save it: its file and its modified time stay as they were. Any real change (text, formatting, a checkbox, a caption, an image, a file or a tab) is still saved (ISS-026). | M |
 
 ### 2.3 Editor (EDT)
 
@@ -181,7 +182,7 @@
 
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-SET-01 | A Settings window shall contain the options in FR-SEC-13, FR-SEC-18, FR-CAL-02 and FR-INSP-05…11, plus the vault location. | M |
+| FR-SET-01 | A Settings window shall contain the options in FR-SEC-13, FR-SEC-18, FR-CAL-02, FR-INSP-05…11 and FR-TRK-01…02, plus the vault location. | M |
 | FR-SET-02 | Settings shall persist between runs. | M |
 | FR-SET-03 | The user shall be able to move the vault to another folder; the app copies, verifies and then removes the old copy. | S |
 | FR-SET-04 | *Export backup* shall write the encrypted vault to a single `.zip` file chosen by the user. | S |
@@ -205,6 +206,22 @@ Added by ISS-013 (owner, 2026-10-19).
 | FR-MOOD-03 | Calendar days are tinted light red for sad and light green for happy; neutral and no mood keep the normal background. A mood tint replaces the entry highlight; a day with an entry and no mood keeps the entry highlight. Every day with a mood also shows a small face, so the mood doesn't depend on colour. | M |
 | FR-MOOD-04 | A section under the calendar counts sad, neutral and happy days over the last 30 days and the last 12 months, both ending today and including today. Days without a mood aren't counted. Moods aren't searchable. | M |
 | FR-MOOD-05 | Choosing or clearing a mood saves at once; the calendar tint and the counts update immediately. | M |
+
+### 2.13 Tracked values (TRK)
+
+Added by ISS-030 (owner, 2026-11-24).
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-TRK-01 | Settings → Tracked values shall have a switch, "Track values from my journal", off by default. While it is off, no tracked values are shown and the Graphs button is hidden. | M |
+| FR-TRK-02 | The user can add, rename and remove tracked values. Each has a name (up to 40 characters, without #, = or a line break), an optional unit, a period (weekly or monthly) and "Show on the main screen", which at most two can have. Names ignore case and extra spaces and must differ. A list with a bad name is not saved. | M |
+| FR-TRK-03 | The tracked values' names and units are journal content: they are saved encrypted in the vault, and only the on/off switch is written to the settings file (NFR-SEC-07). | M |
+| FR-TRK-04 | A day gives a tracked value a reading from `##<name>=<value>` anywhere in any tab, and from the first number in a tab whose tag is the value's name; numbers inside a `##name=value` don't count as a tab's first number. Only names set up in Settings count. | M |
+| FR-TRK-05 | A value is a number with a point or a comma as the decimal mark and no thousands separator, or two numbers joined by "/" (such as blood pressure), which are drawn as two lines. A full stop or other mark that ends a sentence may follow it. Anything else, and any value on a day after today, is ignored without a message. | M |
+| FR-TRK-06 | A value belongs to the week (starting on the calendar's first day of the week, FR-CAL-02) or the month of its day. If a period has several values, the latest day's counts; within a day, the last one written (tabs in order, top to bottom). | M |
+| FR-TRK-07 | Values are read from the encrypted catalog, so days written before a tracked value was set up count at once, and a change to a day shows as soon as it is saved. | M |
+| FR-TRK-08 | Below MOODS, one card lists the tracked values shown on the main screen, each with its latest value, the day it was written and a small graph of the last 12 weeks or months. When the left column is too short for the graphs, the card shows one line per value; when even that doesn't fit, or while a search is showing, the card is hidden so the search keeps its room (NFR-USE-02). Clicking a value opens the Graphs window at it. | M |
+| FR-TRK-09 | A Graphs button beside Settings opens a window with every tracked value's graph over 3 months, 1 year or all. Hovering over a point shows its period, day and value; clicking a point opens that day. Each graph has a table of its values, newest first, with a link to each day. The window closes when the journal locks. | M |
 
 ## 3. Non-functional requirements
 

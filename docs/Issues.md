@@ -35,7 +35,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-009 | Windows Hello prompt appears on the main display, not the one showing the app | Bug | Low | Design §14; gap → NFR-USE-03 | TC-SEC-20 (manual) fails on multiple displays; gap → TC-SEC-24 (manual), TC-SEC-25 | Closed |
 | ISS-010 | Copy and paste drops checkboxes, images, attached files and headings | Bug | High | FR-EDT-01; FR-EDT-06, FR-EDT-08, FR-IMG-04, FR-ATT-02; new FR-EDT-13 | TC-EDT-01 (manual, text only); gap → TC-EDT-17 (new) | Closed |
 | ISS-011 | Add quotes from great literature (Shakespeare and world authors) | Change | Low | FR-INSP-02, FR-INSP-04, FR-INSP-06 (changed); FR-INSP-16, FR-INSP-17 (new) | TC-INSP-01, TC-INSP-05, TC-INSP-10 (changed); TC-INSP-16 (new) | Closed |
-| ISS-012 | Add world-religion texts to the verse and Science as a quote category | Change | Low | FR-INSP-01, FR-INSP-02, FR-INSP-06 (change); new FR-INSP-18 to FR-INSP-21 | TC-INSP-01, TC-INSP-05, TC-INSP-16 (change); new TC-INSP-17 to TC-INSP-20 | Verified |
+| ISS-012 | Add world-religion texts to the verse and Science as a quote category | Change | Low | FR-INSP-01, FR-INSP-02, FR-INSP-06 (change); new FR-INSP-18 to FR-INSP-21 | TC-INSP-01, TC-INSP-05, TC-INSP-16 (change); new TC-INSP-17 to TC-INSP-20 | Closed |
 | ISS-013 | Mark each day sad, neutral or happy; tint the calendar and count moods | Change | Medium | FR-CAL-03 (change); new FR-MOOD-01…05 | TC-CAL-03 (change); new TC-MOOD-01…06 | Closed |
 | ISS-014 | A ticked checklist item's strikethrough also runs through its checkbox | Bug | Low | FR-EDT-09 | TC-EDT-11 (extended) | Closed |
 | ISS-015 | Settings: a section per quote category, and tick-box lists in alphabetical columns | Change | Low | FR-INSP-06 (change) | TC-INSP-05 (change); new layout test | Closed |
@@ -49,10 +49,13 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | ISS-023 | Windows Hello dialog opens behind the "Journal is locked" window | Bug | Medium | FR-SEC-20 (a Windows Hello request the user can't see); FR-SEC-08 | None failed (gap: no test checks that the dialog is in front); new TC-SEC-27 | Closed |
 | ISS-024 | The app freezes when the PC goes to sleep with unsaved text | Bug | High | FR-SEC-14, FR-SEC-16, FR-ENT-05 | TC-SEC-14 passed (gap: it has nothing to save); new TC-SEC-28 | Closed |
 | ISS-025 | Three test cases marked automated have no complete test | Test gap | Medium | NFR-SEC-07, NFR-PERF-02 (not verified); FR-TAB-07 (partly verified) | TC-NFR-09, TC-NFR-14, TC-TAB-07 | Closed |
-| ISS-026 | Viewing a day re-saves it, and switching days is slower than required | Bug | Medium | NFR-PERF-02 | TC-NFR-14 (fails when run) | Open |
-| ISS-027 | Some built-in verse passages are very long | Change | Low | FR-INSP-15 (shown in a scrolling card); FR-INSP-18 (no length limit) | TC-INSP-17 (no length check) | Deferred |
-| ISS-028 | Add Humanism as a quote category | Change | Low | FR-INSP-02, FR-INSP-17 (content only); new requirement to be agreed | New content test to be agreed | Verified |
-| ISS-029 | Add Atheism as a verse tradition | Change | Low | FR-INSP-18 (the traditions listed) | TC-INSP-17 (the traditions listed) | Verified |
+| ISS-026 | Viewing a day re-saves it, and switching days is slower than required | Bug | Medium | NFR-PERF-02; new FR-ENT-10 | TC-NFR-14 (now passes); new TC-ENT-10, TC-ENT-11 | Verified |
+| ISS-027 | Some built-in verse passages are very long | Change | Low | FR-INSP-15 (shown in a scrolling card); FR-INSP-18 (no length limit) | TC-INSP-17 (no length check) | Closed |
+| ISS-028 | Add Humanism as a quote category | Change | Low | FR-INSP-02, FR-INSP-17 (content only); new requirement to be agreed | New content test to be agreed | Closed |
+| ISS-029 | Add Atheism as a verse tradition | Change | Low | FR-INSP-18 (the traditions listed) | TC-INSP-17 (the traditions listed) | Closed |
+| ISS-030 | Track and graph values the user names (weight, blood pressure and so on) | Change | Medium | New FR-TRK-01…09; FR-SET-01 (change) | New TC-TRK-01…09; TC-NFR-09 (change) | Verified |
+| ISS-031 | Show an image of the day (art, nature photos, scientific diagrams, inventions, maps) | Change | Medium | New FR-PIC-01…08; NFR-LIC-01, FR-INSP-15, NFR-USE-02 (change) | New TC-PIC-01…07; TC-NFR-24 (change) | Deferred |
+| ISS-032 | A simplified phone app for iPhone and Android | Change | Medium | New FR-MOB-*, FR-SYNC-*; NFR-COMP-01, FR-SEC-02, FR-SEC-18, §4 assumptions (change) | New TC-MOB-*, TC-SYNC-*; Core and vault tests run on phones | Open |
 
 ---
 
@@ -552,7 +555,7 @@ Each fix also updates the affected requirements and test cases, and adds or corr
 | **Failing requirements** | None (new capability). |
 | **Requirements to change** | FR-INSP-01 (a passage from a scripture, not only a Bible verse), FR-INSP-02 (Science is a quote category too), FR-INSP-06 (verses filtered by tradition and book). New FR-INSP-18 to FR-INSP-21. |
 | **Tests to change** | TC-INSP-01, TC-INSP-05, TC-INSP-16, TC-NFR-09 (one new setting name). New TC-INSP-17 to TC-INSP-20. |
-| **Status** | Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the choices below. |
+| **Status** | Closed 2026-11-24. Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the choices below. |
 
 **Description.** The owner would like:
 1. **World religions under the VERSE card:** passages from other religions' scriptures, as options alongside the Bible.
@@ -1312,7 +1315,7 @@ Clicking and pressing Enter both show it, so how the unlock is started doesn't a
 | **Area** | Opening and leaving a day (`EntryViewModel.FlushAsync`, `FlowDocumentMapper`, `JournalEditor`) |
 | **Failing requirements** | NFR-PERF-02: switching days within 300 ms without images, 1 second with 10 images. |
 | **Failing tests** | TC-NFR-14 fails when run (`JOURNAL_PERF=1`, Release): text-only median **1,116 ms** against 300 ms; 10 images median **1,268 ms** against 1,000 ms. |
-| **Status** | Open. Not approved; no work until the owner approves. |
+| **Status** | Verified by the owner 2026-11-24. Fixed 2026-11-24. Approved by the owner 2026-11-24. |
 
 **Description.** Switching from one day to another takes about a second, and leaving a day rewrites it even if nothing changed.
 
@@ -1347,6 +1350,28 @@ In the run, **10 switches caused 10 saves**, with nothing edited.
 - **New (automated):** opening and leaving a day with no edits saves nothing, for days with text, checklists, headings, lists, images and files; the entry's modified time doesn't change; a real edit still saves.
 - **TC-NFR-14:** must pass, or NFR-PERF-02 is changed by the owner's decision.
 
+**Fix (2026-11-24).**
+1. **No save when nothing changed.** Leaving a day now compares the documents without their blocks' ids (`JournalJson.SameContent`), so only a real change saves. If nothing changed, the day keeps the documents it opened with, ids included. New requirement FR-ENT-10.
+2. **Measured again, and the "showing" time split.** Leaving and opening a day now take a few milliseconds. Almost all the rest was building a new editor, with its toolbar, font list and text box, on every switch, because the tab control rebuilt its content for each day.
+   - **One editor:** the tab control now shows only the tab headers, and one editor below it is handed each day and tab in turn. It looks exactly as before; a picture of the window was checked against the old one.
+   - **Calendar:** changing month rebuilt the calendar's 42 day cells; they are now kept and updated. This also helps every save, which refreshes the calendar.
+   - **The test's own wait:** waiting for the window to go fully idle takes 70–100 ms even with nothing left to do. TC-NFR-14 now stops the clock when the new day has been laid out and drawn, and reports the idle wait alongside.
+3. **Result (Release, 3,650 entries, this PC):**
+
+   | Switch | Before | After | Required |
+   |---|---|---|---|
+   | Text only | 1,116 ms | **98 ms** (about 190 ms including the idle wait) | 300 ms |
+   | 10 images of 1 MB | 1,268 ms | **417 ms** | 1,000 ms |
+   | Saves during 10 switches | 10 | **0** | — |
+
+   NFR-PERF-02 stays as it is; no change to the requirement is needed.
+4. **Tests:** new TC-ENT-10 (a day with headings, formatting, lists, checklists, an image, a file and two tabs is opened and left three times: no save, modified time unchanged; plus a Core test of the comparison) and TC-ENT-11 (typing, and ticking a checkbox without a text change, each still save once). TC-NFR-14 passes. All tests pass.
+
+**To verify:**
+1. Open a past day, then another, without typing: the status bar doesn't say "Saved", and in a OneDrive folder nothing syncs.
+2. Type in a day, or tick a checkbox, and switch day: it says "Saved".
+3. Switching days, including to another month, feels immediate.
+
 ---
 
 ## ISS-027: Some built-in verse passages are very long
@@ -1358,7 +1383,7 @@ In the run, **10 switches caused 10 saves**, with nothing edited.
 | **Area** | Built-in verse content (`verses.json`); the verse card |
 | **Requirements to change** | Possibly FR-INSP-18 (a length limit) or FR-INSP-15 (how long passages are shown). |
 | **Tests to change** | Possibly TC-INSP-17 (a length check) and TC-INSP-15. |
-| **Status** | Deferred by the owner 2026-11-08: "I like them, but I am torn about including them." To reconsider in the future. No work until then. |
+| **Status** | Closed 2026-11-24, rejected by the owner: "It's not that big of an issue." The passages stay as they are; the card already scrolls (FR-INSP-15). Deferred by the owner 2026-11-08. |
 
 **Description.** Some of the new scripture passages are much longer than a Bible verse. The card shows about seven lines and scrolls the rest (FR-INSP-15), so a long passage is only partly visible at a glance.
 
@@ -1394,7 +1419,7 @@ For comparison, quotes have a median of 112 to 185 characters and a longest of 5
 | **Area** | Built-in quotes (`quotes.json`) |
 | **Requirements to change** | FR-INSP-02 (the categories named); a new content requirement like FR-INSP-21. |
 | **Tests to change** | TC-INSP-16 (the list of categories); a new content test like TC-INSP-20. |
-| **Status** | Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the answers below. |
+| **Status** | Closed 2026-11-24. Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the answers below. |
 
 **Description.** The owner would like a Humanism category for the daily quote, alongside Philosophy, Literature and Science.
 
@@ -1452,7 +1477,7 @@ For comparison, quotes have a median of 112 to 185 characters and a longest of 5
 | **Area** | Built-in verse traditions (`verses.json`) |
 | **Requirements to change** | FR-INSP-18 (adds Atheism to the traditions, at about 120 passages); FR-INSP-19 (its label is ATHEISM, not a scripture's name). |
 | **Tests to change** | TC-INSP-17 (Atheism among the traditions, its count and label). |
-| **Status** | Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the answers below. |
+| **Status** | Closed 2026-11-24. Verified by the owner 2026-11-08 (exploratory testing). Released in version 1.3.0. Approved by the owner 2026-11-08, with the answers below. |
 
 **Description.** The owner would like Atheism as another category.
 
@@ -1505,3 +1530,301 @@ For comparison, quotes have a median of 112 to 185 characters and a longest of 5
 
 **To verify:** in Settings → Verse & quote, Atheism is listed unticked. Tick it, step through a few days, and passages labelled ATHEISM appear in turn with the other ticked traditions. The review page lists them as AT001 onward.
 
+---
+
+## ISS-030: Track and graph values the user names (weight, blood pressure and so on)
+
+| | |
+|---|---|
+| **Reported** | 2026-11-09, by the owner, as a future enhancement |
+| **Type / Severity** | Change / Medium |
+| **Area** | Settings, the main window's left column (under MOODS), a new Graphs window, saving entries, the encrypted catalog |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | New section "Tracked values", proposed as FR-TRK-01…09 below. FR-SET-01 (the new options). NFR-SEC-07 (the measure names are journal content, so they go in the vault, not the settings file). NFR-USE-02 (the left column must still fit at 1000×650). |
+| **Tests to change** | New TC-TRK-01…09 below. TC-NFR-24 (the smallest window) is extended to the left column. |
+| **Status** | Verified by the owner 2026-11-24. Fixed 2026-11-24. Approved by the owner 2026-11-24, with the answers below. Deferred by the owner 2026-11-09. |
+
+**Description.** The owner wants:
+1. Values tracked weekly and monthly, and graphed. The user names each value. Weight, height and blood pressure are examples; any name is allowed.
+2. Graphs on the main screen, on the left below the MOODS card, but no more than two there.
+3. A new window that shows all the graphs.
+4. Values read from a tab with the value's name, or from text in the journal written as `##<name>=<value>`. Invalid information is ignored.
+5. The feature is optional and turned on in Settings.
+
+**Current state (checked 2026-11-09).**
+- Nothing is tracked today. The closest feature is the mood (ISS-013). It is saved encrypted with the entry and copied into the encrypted catalog, so the calendar and the MOODS counts never open each entry. Tracked values can be kept the same way.
+- A tab is titled with its tag (FR-TAB-02), and an entry can't have two tabs with the same tag, ignoring case (FR-TAB-03). So a tab called "Weight" can be found by its tag.
+- The left column is 300 px wide and holds the calendar, the MOODS card, the search box and the search results. At the smallest window, 1000×650 (NFR-USE-02), the results list already has little room.
+- Settings are saved in `%AppData%\Journal\settings.json`, outside the vault and unencrypted. NFR-SEC-07 says that file holds no journal content.
+- The app has no chart control and uses no charting package (Architecture §13).
+
+**Proposed change.**
+1. **Measures in Settings.** A new section, Tracked values, with an on/off switch, off by default. When it is on, the user adds measures. Each has:
+   - a name, any text, such as "Weight" or "Blood pressure";
+   - an optional unit shown on the graph, such as "lb" or "mmHg";
+   - how often it is tracked: weekly or monthly;
+   - a tick box "Show on main screen". At most two measures can be ticked.
+
+   Measures can be renamed and deleted. Deleting one leaves the journal text as it is.
+2. **Where the measures are kept.** A measure's name can be personal, a health reading for example. So the list of measures is saved encrypted in the vault, and only the on/off switch goes in `settings.json` (NFR-SEC-07).
+3. **Reading values from the journal.** Each time a day is saved, the app reads its values:
+   - **From text:** `##<name>=<value>` anywhere in any of the day's tabs, such as `##weight=182.4` or `##Blood pressure = 120/80`. The name matches a measure ignoring case and the spaces around `=`.
+   - **From a tab named after the measure:** in a tab whose tag is a measure's name, the first number in the tab's text is its value (see question 3).
+   - **What counts as a value:** a number, with a point or a comma as the decimal mark and no thousands separator, or two numbers joined by `/` for a paired reading such as blood pressure.
+   - **What is ignored:** a name that isn't a measure, a value that isn't a number, and any value on a day after today (a planned entry). Nothing is reported as an error, and the text stays in the journal as typed, where search finds it like any other text.
+4. **Weekly and monthly.** A value belongs to the week or month of the day it is written on. Weeks start on the calendar's first day (Sunday or Monday, FR-CAL-02). If a period has more than one value, the latest one counts (see question 2). A period with no value is skipped, and the line joins the points either side of it.
+5. **Storage.** The values are kept in the encrypted catalog, like moods (FR-MOOD-02), so drawing a graph never opens every entry. If the catalog is rebuilt (NFR-REL-02), the values are read again. When the feature is first turned on, or a measure is added or renamed, the app reads all existing entries once in the background, so `##weight=` lines written earlier count too.
+6. **Main screen.** Below MOODS, one card for each measure ticked "Show on main screen", at most two. A card shows:
+   - the name;
+   - the latest value and unit;
+   - a small line graph of the last 12 weeks or 12 months.
+
+   Clicking a card opens the Graphs window at that measure. When the window is shorter than 760 px, the cards shrink to one line with the latest value, as the verse card does (FR-INSP-15), so the search results keep room at 1000×650.
+7. **Graphs window.** Opened from a Graphs button beside Settings and from the cards on the main screen. It shows:
+   - every measure's graph, with a choice of range: 3 months, 1 year or all;
+   - each point's date and value when the mouse is over it;
+   - that day's page when a point is clicked.
+
+   It can be used from the keyboard. Each graph also has a table of its values, so a screen reader can read them.
+8. **Drawing.** The app draws the graphs with WPF shapes, as it draws the mood faces, so no new package is needed. If the owner wants richer charts later, a charting package such as OxyPlot or ScottPlot is an option; both are MIT licensed, as NFR-LIC-01 requires.
+9. **Proposed requirements.**
+   - FR-TRK-01: Settings has a Tracked values section with an on/off switch, off by default. When it is off, nothing is read, stored or shown.
+   - FR-TRK-02: the user can add, rename and delete measures, each with a name, an optional unit, a period (weekly or monthly) and "Show on main screen". At most two measures are shown there.
+   - FR-TRK-03: the measures and their values are journal content: they are saved encrypted in the vault, and nothing about them is written to `settings.json`.
+   - FR-TRK-04: when a day is saved, `##<name>=<value>` in any tab, and the first number in a tab whose tag is a measure's name, give that measure a value for the day. Names match ignoring case and the spaces around `=`.
+   - FR-TRK-05: a value is a number, or two numbers joined by `/`. Unknown names, values that aren't numbers, and values on days after today are ignored without a message.
+   - FR-TRK-06: a value belongs to the week (starting on the calendar's first day) or month of its day. If a period has several values, the latest counts.
+   - FR-TRK-07: values are kept in the encrypted catalog and read again when it is rebuilt. Turning the feature on, or adding or renaming a measure, reads the existing entries in the background.
+   - FR-TRK-08: below MOODS, one card for each measure shown on the main screen, at most two, with its latest value and a graph of the last 12 periods. The cards shrink to one line when the window is shorter than 760 px.
+   - FR-TRK-09: a Graphs window shows every measure's graph over 3 months, 1 year or all. Hovering over a point shows its date and value, clicking it opens that day, and each graph has a table of its values.
+
+**Questions for the owner.**
+1. **"Weekly and monthly":** does each measure have its own period (weight weekly, height monthly), as proposed? Or should every measure be shown both by week and by month?
+2. **Several values in one period,** for example two weigh-ins in a week: should the graph use the latest (proposed), the average, or show each value as its own point?
+3. **A tab named after a measure:** what does that tab hold? Proposed: its first number is the value, so the tab can have notes after it. Alternatively, the tab could have to contain nothing but the value.
+4. **New names:** must a measure be set up in Settings before its values count (proposed)? Or should any `##<name>=<value>` the app finds add a measure by itself?
+5. **Paired readings** such as blood pressure (`120/80`): two lines on one graph (proposed), or single numbers only?
+
+**Owner's answers (2026-11-24).** All as proposed:
+1. **Each measure has its own period,** weekly or monthly, set in Settings.
+2. **Several values in one period:** the latest counts.
+3. **A tab named after a measure:** its first number is the value; notes can follow it.
+4. **Measures are set up in Settings first;** a `##name=value` with a name that isn't a measure is ignored.
+5. **Paired readings** such as `120/80` are drawn as two lines on one graph.
+
+**Proposed tests.**
+- TC-TRK-01 (automated): valid forms give values: `##weight=182.4`, `##Weight = 182,4`, `##blood pressure=120/80`, a negative number. Ignored forms give none: an unknown name, `##weight=heavy`, `##weight=`, `#weight=1`, a value on a future day.
+- TC-TRK-02 (automated): a tab tagged with a measure's name gives its first number; a tab with no number gives none.
+- TC-TRK-03 (automated): grouping by week, starting Sunday and starting Monday, and by month. The latest value in a period counts, and an empty period is skipped.
+- TC-TRK-04 (automated): measures and values are encrypted in the vault; `settings.json` contains no measure names; a rebuilt catalog has the same values.
+- TC-TRK-05 (automated): turning the feature on reads the existing entries. Editing a day's value updates the graph, and deleting the line removes the value.
+- TC-TRK-06 (automated): the main screen shows only measures ticked for it, at most two, and nothing when the feature is off.
+- TC-TRK-07 (automated): the Graphs window lists every measure, changes range, opens a day from a point, and has screen-reader names and value tables.
+- TC-TRK-08 (automated, real window): at 1000×650 with two measures shown, the calendar, MOODS, both cards and the search box fit, with room for search results. This extends TC-NFR-24.
+- TC-TRK-09 (manual): the graphs are readable in the light and dark themes at 100 % and 150 % scaling.
+
+**Fix (2026-11-24).**
+- **Settings → Tracked values** (new tab): a switch "Track values from my journal", off by default, and a list of values, each with a name, an optional unit, weekly or monthly, and "Show" for the main screen. A third "Show" is refused with a message. A bad or repeated name shows an error and nothing is saved. The list is saved encrypted in the vault (`lists/measures.jlist`); only the switch goes in `settings.json`.
+- **Reading values:** `##name=value` anywhere in a day, and the first number in a tab named after the value, as approved. Values are read from the encrypted catalog, which already holds each tab's text for search. This differs from the proposal in a good way: no separate store and no background scan are needed, days written before a value was set up count at once, and renaming a value takes effect at once.
+- **Which value counts:** the latest day's value in each week or month; within a day, the last one written. Weeks start on the calendar's first day.
+- **Main screen:** one card below MOODS lists the values ticked "Show", each with its latest value, the day it was written and a small graph of the last 12 weeks or months. Clicking a value opens the Graphs window at it. It fits the space:
+
+  | Window | Card |
+  |---|---|
+  | Default size (820 high) | Both values with small graphs |
+  | About 750 high | One line per value, no graphs |
+  | Smallest (1000×650) | Hidden: the calendar, MOODS and the search box already fill the column. The values stay one click away under *Graphs*. |
+  | While searching | Hidden, so the results keep the column as before |
+
+  The proposal said the card would shrink to one line at the smallest size. Measured, even one line pushed the search box out of the window at 1000×650, so the card steps aside there instead.
+- **Graphs window:** a *Graphs* button beside *Settings*, shown only while the feature is on. Every value's graph over 3 months, 1 year or all; hovering over a point shows its week or month, day and value; clicking a point opens that day. A paired value such as blood pressure draws two lines, teal and amber, and says so. Each graph has a "Values" table, newest first, with each day's date as a link. The window closes when the journal locks.
+- **Graphs are drawn by the app** (`LineChart`); no charting package was added.
+- **Requirements and tests:** new FR-TRK-01…09 (Requirements §2.13) and TC-TRK-01…09 (TestCases §2.13); FR-SET-01 and TC-NFR-09 changed. Architecture §8.1b. 163 requirements and 181 test cases, each requirement traced to a test.
+- **Tests:** Core 83, Infrastructure 45 and App 132 pass (one performance test skipped in each of the last two, run separately). TC-TRK-09 is a manual check for the owner.
+
+**To verify:**
+1. Settings → Tracked values: tick the switch, add "Weight" (lb, Weekly, Show) and "Blood pressure" (mmHg, Monthly, Show), and Save. A *Graphs* button appears beside *Settings*.
+2. In today's entry write `##weight=182.4`, and on an earlier day `##blood pressure=120/80`. The card below MOODS shows both at once.
+3. Add a tab named "Weight" with `181.9 after a run`: the latest weight becomes 181.9.
+4. Write `##weight=heavy`: nothing changes.
+5. Click a value on the card: the Graphs window opens. Hover over a point, click one to open its day, try 3 months, 1 year and All, and open "Values".
+6. Type in the search box: the card steps aside, and comes back when the search is cleared. Make the window as small as it goes: the card is hidden and the search box stays whole.
+7. Lock: the Graphs window closes.
+
+---
+
+## ISS-031: Show an image of the day (art, nature photos, scientific diagrams, inventions, maps)
+
+| | |
+|---|---|
+| **Reported** | 2026-11-09, by the owner, as a future enhancement |
+| **Type / Severity** | Change / Medium |
+| **Area** | New built-in image content, the day's page, Settings, the size of the app download |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | New section "Image of the day", proposed as FR-PIC-01…08 below. NFR-LIC-01 (licences now cover images). FR-INSP-15 and NFR-USE-02 (the image must not crowd out the editor). FR-SET-01 (the new options). |
+| **Tests to change** | New TC-PIC-01…07 below. TC-NFR-24 (the smallest window) is extended to the image. |
+| **Status** | Deferred by the owner 2026-11-09: "We're not building those features now." The questions below wait until it is reconsidered. No work until then. |
+
+**Description.** The owner wants an image of the day, with its options set in Settings. The categories are:
+- great works of art;
+- inspiring photos, like National Geographic's but legally free to use;
+- important scientific diagrams;
+- inventions;
+- famous maps, for example of battles.
+
+**Current state (checked 2026-11-09).**
+- The day's page shows the verse and quote card. FR-INSP-15 limits its height so it doesn't crowd out the editor; ISS-003 and ISS-004 were both about crowding at small windows.
+- A saved day keeps its verse and quote (`DailyInspiration`, saved with the entry), so going back to a day shows what it showed before. An image of the day can be kept the same way, by its id.
+- The app works offline. All its content ships inside it, and the release zip is about 73 MB.
+- The app already has a full-size image viewer (FR-IMG-08) that can show the image of the day.
+- NFR-LIC-01 covers text only.
+
+**Where free images come from.** National Geographic's photos are copyrighted and can't be used. These sources have similar subjects and can be used freely:
+
+| Category | Free sources | Examples |
+|---|---|---|
+| Great works of art | Museums' open-access collections (CC0 or public domain): the Metropolitan Museum, the National Gallery of Art in Washington, the Art Institute of Chicago, the Rijksmuseum, Smithsonian Open Access. Photographs of public-domain paintings on Wikimedia Commons. | Vermeer, Rembrandt, Hokusai's *Great Wave*, Van Gogh, Monet |
+| Inspiring photos | Work of the US government is public domain: NASA, NOAA, the National Park Service, the Fish and Wildlife Service, USGS. Each photo is checked, since some on those sites are by others and copyrighted. | Earthrise, the Pillars of Creation, Yosemite, Yellowstone, wildlife |
+| Scientific diagrams | Originals old enough to be public domain | Vesalius's anatomy, Hooke's *Micrographia*, Haeckel's *Art Forms in Nature*, Darwin's "I think" tree sketch, Mendeleev's 1869 table, Copernicus's diagram of the planets |
+| Inventions | US patent drawings (public domain), Library of Congress photos with no known restrictions, Leonardo's notebooks | Edison's lamp, Bell's telephone, the Wright Flyer, Leonardo's flying machine |
+| Famous maps | Public-domain maps, many at the Library of Congress | Minard's map of Napoleon's march on Moscow, Gettysburg and other Civil War battle maps, Waterloo, John Snow's cholera map, Mercator's 1569 world map |
+
+Each image records its title, creator, date, category, source institution, source address and licence. The caption shows the title, creator and date.
+
+**Proposed change.**
+1. **Content.** A chosen set of images in each category, checked one by one for licence and quality. As with ISS-012, the owner reviews them on a review page before they ship.
+2. **Shipped with the app or downloaded** (see question 1).
+   - **Shipped with the app (proposed).** It works offline and contacts nothing, like the verses.
+     - At about 1600 px wide and 200 to 300 KB each, 60 images per category (300 in all) add about 75 MB, which roughly doubles the download.
+     - One image for every day of the year in each category would add about 450 MB.
+   - **Downloaded day by day.** The download stays small and the number of images is unlimited, but:
+     - the app would go online for the first time, and the image source would see the PC's address each day;
+     - the image is missing when the PC is offline;
+     - each image's licence still has to be checked, so the app would download from a fixed, checked list and keep each image encrypted in the vault.
+3. **Where it is shown** (see question 2). Proposed: a third panel beside the verse and quote, no taller than they are (FR-INSP-15). It shows the image scaled to fit, with the caption below and a category label above, such as ART or MAP. Clicking the image opens it full size in the app's viewer (FR-IMG-08). When the window is shorter than 760 px the panel gets smaller, as the verse card does.
+4. **Settings.** The options are:
+   - turn the image of the day on or off;
+   - tick the categories to include, all ticked by default;
+   - the same choice of mode as verses and quotes: by day of year or random per day (FR-INSP-07).
+
+   A Shuffle button picks another image for the day, as for the verse and quote (FR-INSP-09).
+5. **Saved with the day.** Once a day is saved, it keeps its image, like its verse and quote (FR-INSP-08). Days saved before this change have no image until they are opened.
+6. **Licences.** NFR-LIC-01 is extended to images: every built-in image is public domain or CC0, with its source recorded. The README lists the sources.
+7. **Proposed requirements.**
+   - FR-PIC-01: each day's page can show an image of the day, with a category label and a caption giving its title, creator and date.
+   - FR-PIC-02: the built-in images cover five categories: art, photos, scientific diagrams, inventions and maps, with at least N images in each (N to be agreed).
+   - FR-PIC-03: Settings turns the image on or off, chooses its categories, and uses the verse and quote's selection mode.
+   - FR-PIC-04: the same date shows the same image for unchanged settings; a saved day keeps its image; a Shuffle button picks another.
+   - FR-PIC-05: clicking the image opens it full size in the app's viewer.
+   - FR-PIC-06: the image panel is no taller than the verse and quote card, and the editor keeps its room at 1000×650.
+   - FR-PIC-07: every built-in image is public domain or CC0, and records its creator, source and licence.
+   - FR-PIC-08 (only if images are downloaded): the app downloads only from the checked list, keeps each image encrypted in the vault, and shows the day's page without the image when it can't be downloaded.
+
+**Questions for the owner.**
+1. **Shipped or downloaded:** ship the images with the app (proposed, about 75 MB more for 60 per category), or download them day by day? And how many images per category?
+2. **Where on the screen:** a third panel beside the verse and quote (proposed), a card in the left column, or a band across the top of the day's page?
+3. **Licences:** public domain and CC0 only (proposed), or also Creative Commons images that require a credit line (CC BY), which would widen the choice, especially for nature photos?
+4. **On or off by default?** The verse and quote are on by default; the other verse traditions start off.
+5. **Maps:** battle maps and other famous maps, such as Minard's, John Snow's and early world maps (proposed), or battle maps only?
+
+**Proposed tests.**
+- TC-PIC-01 (automated): each category has at least N images. Each image has a title, creator, date, source and a licence of public domain or CC0, and decodes. No image appears twice.
+- TC-PIC-02 (automated): the category filter and the on/off switch work; the image follows the selection mode; Shuffle never gives the same image twice in a row.
+- TC-PIC-03 (automated): a saved day keeps its image after locking and reopening; a day saved before the change has none until it is opened.
+- TC-PIC-04 (automated): clicking the image opens the viewer; its screen-reader name gives the title and creator.
+- TC-PIC-05 (automated, real window): at 1000×650 with the longest verse, quote and caption, the editor keeps at least 100 px. This extends TC-NFR-24.
+- TC-PIC-06 (manual): images and captions look right in the light and dark themes at 100 % and 150 % scaling.
+- TC-PIC-07 (automated, only if images are downloaded): with the network off, the page shows without the image and no error. Nothing is downloaded while the feature is off.
+
+---
+
+## ISS-032: A simplified phone app for iPhone and Android
+
+| | |
+|---|---|
+| **Reported** | 2026-11-09, by the owner, to explore what it would take |
+| **Type / Severity** | Change / Medium |
+| **Area** | A new phone app; the solution layout; the vault (unlocking and sync); the PC app (editing on two devices); releases |
+| **Failing requirements** | None (new capability). |
+| **Requirements to change** | Architecture §1 lists mobile clients as out of scope for version 1. NFR-COMP-01 (Windows only). FR-SEC-02 (vault locations) and FR-SEC-18 (removing another device's unlock slot). Requirements §4 (one PC at a time). New sections for the phone app and for sync, proposed as FR-MOB-* and FR-SYNC-* below. |
+| **Tests to change** | New TC-MOB-* and TC-SYNC-* below. The Core and vault tests also run on both phones. |
+| **Status** | Open. Recorded 2026-11-09 for exploration; nothing is done until the owner answers the questions below and approves it. |
+
+**Description.** The owner would like to explore a simplified version of the app for iPhone and Android phones, and what would need to be done to build it.
+
+**Current state (checked 2026-11-09).**
+
+| Part | Size | On a phone |
+|---|---|---|
+| `Journal.Core`: entries, documents, search, verse and quote, moods, the vault format and key handling | about 2,700 lines | Carries over almost unchanged. It targets plain `net10.0` and has no Windows code (NFR-MNT-01). |
+| `Journal.Infrastructure`: encryption, vault files, built-in content | about 1,400 lines | Mostly carries over. Only `Hello/` (Windows Hello and the Hello-gated DPAPI fallback) and the `ProtectedData` package are Windows-only. The project targets `net10.0-windows` because of them. |
+| `Journal.App`: the WPF screens | about 6,100 lines | Must be written again. WPF runs only on Windows. |
+| Tests | 170 test cases | The Core and vault tests can be reused; the screen tests can't. |
+
+- **Unlocking.** The vault already supports several unlock slots through `IKeyProtector`: one Windows Hello slot per PC, the recovery code, and the DPAPI fallback (FR-SEC-12, FR-SEC-18). A phone would add its own slot type, so the vault format needs no redesign.
+- **Where the vault lives.** The app reads a folder: `%LOCALAPPDATA%\Journal\Vault`, or a OneDrive folder (FR-SEC-02). Requirements §4 says only one PC should have the journal open at a time, and that conflicting copies OneDrive creates are left untouched.
+- **The catalog.** The calendar and search use one encrypted catalog file (Architecture D7). Two devices that both save would both write it.
+- **Releases.** A `v*` tag publishes a Windows zip to GitHub, linked from qapow.com. Phone apps can't be installed that way.
+
+**Proposed approach.**
+1. **Technology: .NET MAUI (proposed).** One C# app for both phones that reuses `Journal.Core` and most of `Journal.Infrastructure`, so the phone reads and writes exactly the same encrypted format as the PC.
+   - *Alternatives:* native apps (Swift for iPhone, Kotlin for Android), or Flutter or React Native. These look more at home on each phone, but everything is built twice, and the encryption and file format have to be rewritten and kept matching by hand.
+   - *Weak point:* MAUI's rich-text editing is limited. That fits a simplified editor.
+2. **Splitting the code.** Move `Hello/` and the `ProtectedData` package into a Windows-only project, so the rest of `Journal.Infrastructure` targets plain `net10.0` and builds for phones. The PC app keeps working as before.
+3. **Unlocking on the phone.**
+   - At setup on the phone, the user enters the recovery code once.
+   - The app then adds a phone slot: the data key is protected by a key in the phone's secure key store (Keychain on iPhone, Keystore on Android), which Face ID or the fingerprint unlocks.
+   - Settings on the PC can remove a lost phone's slot, as it can for another PC today (FR-SEC-18).
+   - The phone locks when it goes to the background or after the auto-lock time, like the PC (FR-SEC-13, FR-SEC-17).
+4. **Getting the vault onto the phone.**
+   - A phone app can't read the OneDrive folder the way the PC does. It signs in to the user's Microsoft account and downloads and uploads the vault files through OneDrive's online service (Microsoft Graph), which needs an app registration with Microsoft.
+   - The files stay encrypted, so OneDrive never sees the journal's content.
+   - A vault kept only on the PC, not in OneDrive, can't reach the phone this way. The owner may want iCloud Drive or Google Drive as well (question 2).
+5. **Two devices editing (see question 3).** A phone and a PC make using the journal on two devices at once normal, so:
+   - each device keeps its own catalog and builds it from the entry files, so the shared catalog file is no longer written by both;
+   - a day saved on one device while it was changed on the other is detected and either merged or kept as two copies for the user to choose;
+   - the PC app changes as well: it notices days changed elsewhere and takes them in.
+6. **What the phone app does (see question 4).** Proposed:
+   - the calendar with moods, and any day with its verse and quote;
+   - writing and editing text and checklists, and setting the mood;
+   - search.
+
+   Left out: fonts and colours, adding images or files, managing tabs and tags, importing lists, backups and moving the vault. **The phone must never lose what it can't edit:** a day written on the PC with images, files or formatting comes back from the phone unharmed. Either the phone edits only the text and keeps everything else as it was, or such days are read-only on the phone.
+7. **A simpler first version (option).** The phone adds quick notes to an encrypted inbox and sets the day's mood; the next time the PC opens, it moves each note into its day. Past days are read-only on the phone. This removes most of the two-device problem in step 5, but still needs steps 2 to 4.
+8. **Checks to do first.**
+   - Check the vault's encryption (`AesGcm`) works on real phones with .NET 10. As far as known it is supported on Android, and on iPhone since .NET 8.
+   - Check unlock time and search speed on a mid-range phone with 3,650 entries (NFR-PERF-01, NFR-PERF-03).
+9. **Stores and accounts.**
+   - Apple Developer Program: $99 a year. Google Play: $25 once.
+   - Building for iPhone needs a Mac, or a cloud Mac build service.
+   - Both stores review apps and ask for privacy details. Apple also asks the app to declare its encryption; standard encryption is usually exempt but still has to be declared.
+   - Test builds go through TestFlight (iPhone) and a Play testing track (Android). The release process gets a phone build alongside the Windows zip.
+10. **Documents.** The architecture gets a phone section, and the solution layout and §1's scope change. The requirements add the phone app and sync, and NFR-COMP-01 adds the phones' minimum versions. The test cases add phone and sync tests.
+11. **Proposed requirements (outline, to be detailed once the questions are answered).**
+    - FR-MOB-01: the phone app opens the same vault as the PC, reading and writing the same encrypted format.
+    - FR-MOB-02: the first unlock on a phone uses the recovery code; after that Face ID or the fingerprint unlocks it. The PC can remove a phone's slot.
+    - FR-MOB-03: the phone locks when it goes to the background or after the auto-lock time, and keeps no decrypted content when locked.
+    - FR-MOB-04: the phone shows the calendar with moods, any day with its verse and quote, and search.
+    - FR-MOB-05: the phone can edit a day's text and checklists and set its mood. Content it can't edit is kept unchanged.
+    - FR-SYNC-01: the vault files are downloaded and uploaded through OneDrive, still encrypted.
+    - FR-SYNC-02: each device builds its own catalog from the entry files.
+    - FR-SYNC-03: a day changed on two devices is never silently overwritten.
+
+**Questions for the owner.**
+1. **The same journal as the PC (proposed),** or a separate journal kept only on the phone? A separate journal avoids sync and conflicts, but is much less useful.
+2. **Where the vault syncs:** OneDrive only (proposed, as the PC already offers it), or also iCloud Drive and Google Drive?
+3. **Editing on both devices:** should a day changed on both be merged or kept as two copies? Or start with the simpler inbox version (step 7), where the phone only adds notes and sets moods?
+4. **What the phone can do:** is the list in step 6 right? Should days with images or formatting be read-only on the phone, or should the phone edit their text and keep the rest?
+5. **Technology:** .NET MAUI for both phones (proposed), or native apps?
+6. **Which phone first,** or both together? An Android-only start avoids the Mac and the Apple fee at first.
+7. **Store accounts:** will you register the Apple and Google developer accounts, and in your own name or a company's? The apps would be listed under that name.
+
+**Proposed tests (outline).**
+- TC-MOB-01 (automated, on both phones): the Core and vault test suites pass, including encryption and the vault format.
+- TC-MOB-02 (automated): a vault written on the PC opens on the phone, and a day saved on the phone reads back the same on the PC.
+- TC-MOB-03 (automated): a day with images, files and formatting edited on the phone keeps them all.
+- TC-MOB-04 (manual, on devices): set up with the recovery code, then unlock with Face ID or the fingerprint. Removing the phone's slot on the PC stops it from unlocking.
+- TC-MOB-05 (manual, on devices): the phone locks in the background and after the auto-lock time, and nothing from the journal shows in the app switcher.
+- TC-SYNC-01 (automated, with a fake OneDrive): files are uploaded and downloaded encrypted, and nothing readable leaves the device.
+- TC-SYNC-02 (automated): the same day changed on two devices is detected and never silently overwritten.
+- TC-SYNC-03 (manual): unlock time and search speed on a mid-range phone with 3,650 entries.
